@@ -15,6 +15,12 @@ export interface StageAnchorRecord {
   paper: boolean;
 }
 
+/** A creature silhouette normalised to unit height (see Creature.snapshot). */
+export interface Silhouette {
+  points: number[];
+  radii: number[];
+}
+
 export interface SaveData {
   discovered: Species[];
   talesFinished: string[];
@@ -22,6 +28,8 @@ export interface SaveData {
   tutorialDone: boolean;
   stageAnchor: StageAnchorRecord | null;
   lastVisit: number;
+  moonHare: Silhouette | null;
+  lastTale: string | null;
 }
 
 const fresh = (): SaveData => ({
@@ -31,6 +39,8 @@ const fresh = (): SaveData => ({
   tutorialDone: false,
   stageAnchor: null,
   lastVisit: 0,
+  moonHare: null,
+  lastTale: null,
 });
 
 export class Save {
@@ -82,6 +92,16 @@ export class Save {
 
   setStageAnchor(record: StageAnchorRecord | null): void {
     this.data.stageAnchor = record;
+    this.write();
+  }
+
+  setMoonHare(s: Silhouette): void {
+    this.data.moonHare = s;
+    this.write();
+  }
+
+  setLastTale(id: string): void {
+    this.data.lastTale = id;
     this.write();
   }
 

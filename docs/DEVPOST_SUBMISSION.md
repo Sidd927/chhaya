@@ -23,12 +23,11 @@ You look at a wall in your room and pinch. That wall becomes the stage, and a sm
 
 Hold a shape still and the shadow breathes, glows at its edges, and comes alive: a hare from two fingers, a lion from a claw, a stag from index and little finger, a peacock from a spread hand. Every creature keeps the exact silhouette of the hand that made it.
 
-Then the lantern tells a story: *The Lion and the Clever Hare* from the Panchatantra. You perform every character:
-- carry the hare to the lion by pinching its shadow
-- lead the lion to an old well
-- snap your hand open to make him roar, and his reflection roars back.
+Then the lantern tells a story, and you perform every character:
+- *The Lion and the Clever Hare* (Panchatantra): carry the hare to the lion by pinching its shadow, lead the lion to an old well, then snap your hand open to make him roar so his reflection roars back.
+- *The Hare in the Moon* (Jataka): light a traveller's fire with your hand and carry the hare into it. In the end the god draws the hare on the moon. It is *your* hare's silhouette, and it stays on your theater's moon on every later visit.
 
-Afterwards the stage is yours, with eight shadows to discover. Your theater remembers your wall the next time you visit.
+Afterwards the stage is yours, with eight shadows to discover. Your theater remembers your wall, your shadows and your moon the next time you visit.
 
 ## Inspiration
 
@@ -48,7 +47,7 @@ Mixed reality lets me keep everything that is real about the ritual (your hands,
   - The wall shader adds lantern irradiance and contact-hardening penumbra, chosen from the mip chain by blocker depth, over passthrough.
 - **A "magic lantern":** a real point light 30 cm from your hand would magnify its shadow about 10× on a far wall. The light is focused from a point behind the visible lantern so shadows stay framed on any wall, while still growing and softening as you approach the lantern.
 - **Scene understanding:** only planes labelled `wall` are offered (wall art, windows and doors are skipped). Head-gaze picks the wall and a pinch confirms. A paper screen appears when no wall is in view.
-- **Persistence:** the stage is anchored with WebXR anchors and a persistent handle, then restored onto the same wall on the next visit. Discovered shadows are saved on the headset.
+- **Persistence:** the stage is anchored with WebXR anchors and a persistent handle, then restored onto the same wall on the next visit. Discovered shadows and your hare-in-the-moon silhouette are saved on the headset.
 - **Interface made of light:** you choose by covering an ink medallion with your hand's shadow (a dwell ring fills) or by pinching while covering it. There are no floating panels or rays.
 - **Sound:** synthesized at runtime with WebAudio: a tanpura drone, bell tones, and HRTF-panned creature calls positioned on your wall. No audio files ship.
 - **Art direction:** lamp-black and lantern-gold, Fraunces and Manrope (OFL) typography sized by viewing angle, a procedural paper lantern. No stock art or AI imagery.
@@ -84,7 +83,7 @@ Accessibility features:
 
 ## Future plans
 
-- More tales from the Panchatantra and Jataka (*The Tortoise and the Geese*, *The Monkey and the Crocodile*), one unlocked per evening.
+- More tales from the Panchatantra and Jataka (*The Tortoise and the Geese*, *The Monkey and the Crocodile*), one unlocked per evening, each leaving a keepsake in your theater as the moon hare does.
 - Two-handed creatures (a bird from crossed thumbs).
 - Shared stages: a parent and child performing together.
 - Recording and replaying your own shadow plays.
@@ -100,7 +99,7 @@ Accessibility features:
 3. Press **Enter the theater** and allow hand tracking and spatial data if asked.
 4. Put the controllers down, sit facing a wall, look at it and pinch.
 5. Raise a hand into the light. Try two fingers up, a claw, a spread hand or a fist, and hold still.
-6. Cover **Hear a tale** with your hand's shadow for the story (about 6 minutes), or **Open stage** to play freely.
+6. Cover **Hear a tale** with your hand's shadow for the story (5–6 minutes; the second visit to the menu offers the second tale), or **Open stage** to play freely.
 
 To reset progress, clear site data for `sidd927.github.io` in Quest Browser settings.
 

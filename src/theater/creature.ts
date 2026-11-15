@@ -400,6 +400,23 @@ export class Creature {
     return Math.abs(x - this.x) < this.halfWidth + pad && y > this.y - pad && y < this.y + this.fullHeight + pad;
   }
 
+  private glowing = false;
+  private glowScale = 1;
+
+  /** The traveller reveals himself: grows and glows. */
+  glow(): void {
+    this.glowing = true;
+  }
+
+  /** The silhouette normalised to unit height, centred on x = 0, feet at y = 0. */
+  snapshot(): { points: number[]; radii: number[] } {
+    const h = Math.max(1e-3, this.height);
+    return {
+      points: Array.from(this.rest, (v) => +(v / h).toFixed(4)),
+      radii: Array.from(this.boneRadii, (r) => +(r / h).toFixed(4)),
+    };
+  }
+
   /** Draw a small reflected copy (upside down, rippling) centred at cx, cy. */
   emitMirror(layer: ShadowLayer, cx: number, cy: number, size: number, time: number): void {
     if (size <= 0.01) return;
@@ -427,7 +444,8 @@ export class Creature {
     }
     if (this.species === 'wisp' && this.state !== 'awakening') hop = (0.06 + Math.sin(this.phase * 1.7) * 0.03) * this.unit;
     if (this.nudgeTime >= 0) hop += Math.sin((this.nudgeTime / 0.6) * Math.PI) * 0.07 * this.unit;
-    let s = this.scale;
+    if (this.glowing) this.glowScale += (1.4 - this.glowScale) * 0.03;
+    let s = this.scale * this.glowScale;
     if (this.roarTime >= 0) s *= 1 + 0.08 * Math.sin(Math.min(1, this.roarTime / 0.9) * Math.PI);
     if (this.species === 'wisp') s *= 1 + Math.sin(this.phase * 9) * 0.02;
     s *= this.fade;
@@ -435,7 +453,7 @@ export class Creature {
 
     const awaken = this.state === 'awakening' ? Math.min(1, this.stateTime / AWAKEN_TIME) : 1;
     const armFade = 1 - awaken;
-    const glow = this.state === 'awakening' ? 1 - awaken : ember;
+    const glow = this.state === 'awakening' ? 1 - awaken : this.glowing ? 0.7 + 0.3 * Math.sin(this.phase * 3) : ember;
     const depth = this.depth + (0.92 - this.depth) * awaken; // creatures settle crisp, near the wall
 
     HAND_BONES.forEach(([a, b, , arm], k) => {

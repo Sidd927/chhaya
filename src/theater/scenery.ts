@@ -3,6 +3,8 @@
  * and creatures share one hand-cut look: grass, two trees and an old well.
  * Each prop has a `grow` value (0..1) so it can rise out of the ground.
  */
+import { HAND_BONES } from './hands.js';
+import type { Silhouette } from './save.js';
 import type { ShadowLayer } from './shadow-layer.js';
 
 function seeded(seed: number): () => number {
@@ -88,10 +90,21 @@ export class Scenery {
   private treeCaps: Cap[] = [];
   private wellCaps: Cap[] = [];
   private width = 0;
+  private height = 0;
+  moon = 0;
+  moonTarget = 0;
+  /** The hare drawn on the moon (persisted between visits). */
+  moonHare: Silhouette | null = null;
+  moonHareAlpha = 0;
+  fire = 0;
+  fireTarget = 0;
+  fireX = 1;
+  private time = 0;
   unit = 1;
 
   layout(width: number, height: number): void {
     this.width = width;
+    this.height = height;
     const u = (this.unit = height / 1.3);
     this.grassCaps = grass(width, 11, u);
     this.treeCaps = [...tree(width * 0.07, height * 0.82, 3, u), ...tree(width * 0.95, height * 0.66, 9, u)];
@@ -107,6 +120,10 @@ export class Scenery {
   update(dt: number): void {
     const step = (v: number, t: number) => v + Math.sign(t - v) * Math.min(Math.abs(t - v), dt * 0.7);
     this.forest = step(this.forest, this.forestTarget);
+    this.moon = step(this.moon, this.moonTarget);
+    this.fire = step(this.fire, this.fireTarget);
+    this.moonHareAlpha = step(this.moonHareAlpha, this.moonHare ? 1 : 0);
+    this.time += dt;
     this.wellGrow = step(this.wellGrow, this.wellTarget);
   }
 
@@ -123,6 +140,63 @@ export class Scenery {
     if (w > 0.001) {
       const sink = (1 - w) * 0.65 * this.unit;
       for (const c of this.wellCaps) layer.push(c[0], c[1] - sink, c[2], c[3] - sink, c[4], 0.96);
+    }
+  }
+
+  get moonX(): number {
+    return this.width * 0.3;
+  }
+  get moonY(): number {
+    return this.height - 0.24 * this.unit;
+  }
+  get moonR(): number {
+    return 0.15 * this.unit;
+  }
+
+  emitMoonAndFire(layer: ShadowLayer): void {
+    const u = this.unit;
+    const m = this.moon;
+    if (m > 0.01) {
+      // The moon: a thin drawn ring with the hare inside once he is there.
+      const n = 40;
+      const r = this.moonR;
+      for (let i = 0; i < n; i++) {
+        const a0 = (i / n) * Math.PI * 2;
+        const a1 = ((i + 1) / n) * Math.PI * 2;
+        layer.push(
+          this.moonX + Math.cos(a0) * r, this.moonY + Math.sin(a0) * r,
+          this.moonX + Math.cos(a1) * r, this.moonY + Math.sin(a1) * r,
+          0.007 * u * m, 0.97,
+        );
+      }
+      const hare = this.moonHare;
+      const k = this.moonHareAlpha * m;
+      if (hare && k > 0.01) {
+        const size = r * 1.35;
+        const ox = this.moonX;
+        const oy = this.moonY - size * 0.52;
+        HAND_BONES.forEach(([a, b, , arm], i) => {
+          if (arm) return;
+          layer.push(
+            ox + hare.points[a * 2] * size, oy + hare.points[a * 2 + 1] * size,
+            ox + hare.points[b * 2] * size, oy + hare.points[b * 2 + 1] * size,
+            hare.radii[i] * size * k, 0.95,
+          );
+        });
+      }
+    }
+    const f = this.fire;
+    if (f > 0.01) {
+      const x = this.fireX;
+      const g = 0.07 * u;
+      layer.push(x - 0.09 * u, g, x + 0.09 * u, g + 0.03 * u, 0.016 * u, 0.96);
+      layer.push(x + 0.09 * u, g, x - 0.09 * u, g + 0.03 * u, 0.016 * u, 0.96);
+      for (let i = 0; i < 6; i++) {
+        const fx = x + (i - 2.5) * 0.026 * u;
+        const flick = 0.5 + 0.5 * Math.sin(this.time * (7 + i * 1.7) + i * 2.1);
+        const h = (0.1 + 0.12 * flick + (i === 2 || i === 3 ? 0.08 : 0)) * u * f;
+        layer.push(fx, g + 0.03 * u, fx + Math.sin(this.time * 3 + i) * 0.015 * u, g + 0.03 * u + h, 0.014 * u * f, 0.9, 1);
+      }
     }
   }
 

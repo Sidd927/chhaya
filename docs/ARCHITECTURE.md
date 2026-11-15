@@ -16,12 +16,12 @@ Chhaya is a static WebXR app built with Meta's Immersive Web SDK (IWSDK 1.1.0, T
 | `theater/stage.ts` | Wall frame (origin, right, up, normal, size), point projection from a light onto the wall, and the wall shader (lantern light plus contact-hardening shadow, or a washi paper screen). |
 | `theater/shadow-layer.ts` | 2D signed-distance capsules drawn as instanced quads into a mipmapped render target. |
 | `theater/creature.ts` | A creature is a frozen copy of the projected hand: normalised, detached from its forearm, then animated in 2D by rotating its own finger chains. Each species has its own gait. |
-| `theater/scenery.ts` | Grass, trees and a village well built from the same capsules, rising out of the ground. |
-| `theater/tale.ts` | *The Lion and the Clever Hare*, as data: narration, instruction, hold time, a wait condition, an assist. |
+| `theater/scenery.ts` | Grass, trees, a village well, the moon (with the saved hare silhouette) and a flickering fire, all built from the same capsules. |
+| `theater/tale.ts` | Two tales as data (*The Lion and the Clever Hare*, *The Hare in the Moon*): narration, instruction, hold time, a wait condition, an assist. The director plays the first tale not yet heard, then alternates. |
 | `theater/lantern.ts` | Procedural paper lantern (lathe and rib geometry, glow sprites), flicker, and pinch-grab. |
 | `theater/text.ts` | Canvas typography (bundled Fraunces and Manrope, OFL), cross-fading `TextPlane`, and `LightButton` ink medallions with a progress ring. |
 | `theater/audio.ts` | All sound synthesized with WebAudio, with HRTF panning for creature sounds. |
-| `theater/save.ts` | Discovered species, finished tales, visit count, tutorial flag, and the persistent stage anchor record. |
+| `theater/save.ts` | Discovered species, finished tales, last tale, visit count, tutorial flag, the persistent stage anchor record, and the moon hare (a normalised silhouette). |
 | `theater/canonical-shapes.json` | Reference 2D silhouettes per species, generated from IWER's MIT-licensed pose library (`scripts/make-canonical-shapes.ts`), used by the assist summons. |
 
 ## The shadow pipeline

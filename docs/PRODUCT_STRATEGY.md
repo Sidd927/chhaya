@@ -43,7 +43,9 @@ On a phone or a laptop there is no wall, no light between you and it, and no han
 2. **Choose a stage.** Look at a wall (a gaze reticle appears on it) and pinch.
 3. **The curtain rises.** The lantern's light pools on your wall. Raise a hand and its shadow appears.
 4. **The first creature.** Hold two fingers up; the shadow breathes, glows at the edges and becomes a hare.
-5. **A tale.** *The Lion and the Clever Hare*, from the Panchatantra (public domain). You summon and puppeteer every character, carry the hare to the lion and lead the lion to the well, and its reflection roars back. About 5–6 minutes.
+5. **A tale.** Two public-domain tales, each 5–6 minutes, in which you summon and puppeteer every character.
+   - *The Lion and the Clever Hare* (Panchatantra): the lion's reflection roars back from the well.
+   - *The Hare in the Moon* (Jataka): it ends by drawing the hare *you* made on the moon, where it stays for every later visit.
 6. **The open stage.** Make creatures freely and find all eight shadows. Undiscovered shapes are hinted at.
 
 ## Differentiators
@@ -74,12 +76,12 @@ Details are in `COMPETITION_RESEARCH.md`.
 | Technical | Custom shadow pipeline (SDF capsules into one mipmapped target with contact-hardening penumbra), semantic wall selection, persistent anchors, hand-shape reading tuned against Meta's emulator pose data. |
 | Polish | Coherent art direction and sound; text sized by angle. |
 
-Special awards it could plausibly contend for: Best First Five Minutes, Boldest Original Concept, Best Reason to Come Back (weaker: one tale and an eight-shadow collection).
+Special awards it could plausibly contend for: Best First Five Minutes, Boldest Original Concept, Best Reason to Come Back (a remembered stage, an eight-shadow collection, a second tale, and your hare kept in the moon).
 
 ## Known weaknesses
 
 - **Not tested on a physical Quest.** Hand-shape thresholds, wall-plane behaviour on Quest Browser, persistent anchor support and frame rate are verified only in IWER.
-- Content depth: one tale, eight creature types.
+- Content depth: two tales, eight creature types.
 - Prior art in hand-shadow gameplay (Silhouette).
 - No multiplayer and no voice narration (captions only).
 

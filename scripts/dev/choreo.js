@@ -226,5 +226,105 @@
     await sleep(5000);
     return st();
   }
+  if (segment === 'moon1') {
+    // A returning visitor who has heard the first tale.
+    const key = 'chhaya.save.v1';
+    const old = JSON.parse(localStorage.getItem(key) || '{}');
+    localStorage.setItem(key, JSON.stringify({ ...old, tutorialDone: true, talesFinished: ['lion-and-hare'], lastTale: 'lion-and-hare', moonHare: null, visits: 3 }));
+    chh.loadSave();
+    const w = sys().world;
+    if (w.session) await w.session.end();
+    await sleep(1200);
+    dev.primaryInputMode = 'hand';
+    dev.quaternion.set(0, 0, 0, 1);
+    w.launchXR();
+    await waitFor(() => st().phase === 'dim', 10000);
+    place(R, 'right', 'wrist', REST_R, null);
+    place(L, 'left', 'wrist', REST_L, null);
+    await head(0, -5, 1.5);
+    await waitFor(() => st().phase === 'wall' || st().phase === 'curtain' || st().phase === 'menu', 12000);
+    if (st().phase === 'wall') {
+      await sleep(1500);
+      await move(R, 'right', 'wrist', [0.16, 1.3, -0.42], null, 0.8);
+      await pinch(R, 1, 0.15);
+      await sleep(200);
+      await pinch(R, 0, 0.15);
+      await rest();
+    }
+    await waitFor(() => st().phase === 'menu', 15000);
+    await sleep(3000);
+    const b = sys().debugButtons().find((b) => b.id === 'tale');
+    await palm(b.x, b.y, 'flat', 1.1);
+    await waitFor(() => st().phase === 'tale', 6000);
+    await sleep(300);
+    await rest();
+    await waitFor(() => beat(1), 15000);
+    const y = H() * 0.55;
+    await palm(W() * 0.45, y, 'peace');
+    await waitFor(() => creature('hare'), 8000);
+    await sleep(1000);
+    await rest();
+    await waitFor(() => beat(2), 20000);
+    await sleep(1000);
+    await palm(W() * 0.68, y, 'open');
+    await waitFor(() => creature('peacock'), 8000);
+    await sleep(800);
+    await rest();
+    await waitFor(() => beat(4), 30000);
+    return { ...st(), tale: sys().tale.id };
+  }
+
+  if (segment === 'moon2') {
+    await waitFor(() => beat(5), 30000);
+    await sleep(2500);
+    const y = H() * 0.55;
+    await palm(W() * 0.5, y, 'fist', 1.0);
+    await sleep(600);
+    await pose(R, 'open', 0.15);
+    await sleep(800);
+    await rest();
+    await waitFor(() => beat(6), 10000);
+    await sleep(1500);
+    await carry('hare', sys().scenery.fireX + 0.05);
+    await waitFor(() => st().phase === 'tale-end', 60000);
+    await sleep(3000);
+    return { ...st(), moon: !!sys().scenery.moonHare };
+  }
+
+  if (segment === 'paper') {
+    // Paper-screen fallback: forget the wall, look at the ceiling, pinch.
+    if (!sys().world.session) {
+      dev.primaryInputMode = 'hand';
+      dev.quaternion.set(0, 0, 0, 1);
+      sys().world.launchXR();
+      await waitFor(() => st().phase === 'dim', 10000);
+      place(R, 'right', 'wrist', REST_R, null);
+      place(L, 'left', 'wrist', REST_L, null);
+    }
+    await waitFor(() => st().phase === 'menu' || st().phase === 'wall', 20000);
+    if (st().phase === 'menu') sys().onButton('move');
+    await waitFor(() => st().phase === 'wall', 5000);
+    await head(0, 70, 1.2);
+    await sleep(3800);
+    await move(R, 'right', 'wrist', [0.16, 1.3, -0.42], null, 0.6);
+    await pinch(R, 1, 0.15);
+    await sleep(200);
+    await pinch(R, 0, 0.15);
+    await rest();
+    await head(0, -5, 1.2);
+    await waitFor(() => st().stagePlaced, 5000);
+    await sleep(5000);
+    return { ...st() };
+  }
+
+  if (segment === 'check') {
+    dev.primaryInputMode = 'hand';
+    sys().world.launchXR();
+    await waitFor(() => st().phase === 'menu', 20000);
+    await sleep(2500);
+    const sc = sys().scenery;
+    return { ...st(), moonHare: !!sc.moonHare, moon: sc.moon };
+  }
+
   return 'unknown segment';
 })

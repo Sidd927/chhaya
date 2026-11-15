@@ -23,6 +23,19 @@ export interface TaleContext {
   splash(): void;
   celebrate(): void;
   clearStage(except?: Species[]): void;
+  setMoon(on: boolean): void;
+  setFire(on: boolean, x?: number): void;
+  readonly fireX: number;
+  /** The hare leaps onto the moon, which keeps its silhouette from now on. */
+  drawOnMoon(c: Creature): void;
+  glow(c: Creature): void;
+}
+
+export interface Tale {
+  id: string;
+  title: string;
+  byline: string;
+  beats: Beat[];
 }
 
 export interface Beat {
@@ -43,7 +56,7 @@ export interface Beat {
 const near = (a: Creature | undefined, x: number, d: number, u: number) =>
   !!a && Math.abs(a.x - x) < d * u && a.state !== 'carried';
 
-export const LION_AND_HARE: { id: string; title: string; byline: string; beats: Beat[] } = {
+export const LION_AND_HARE: Tale = {
   id: 'lion-and-hare',
   title: 'The Lion and the Clever Hare',
   byline: 'a tale from the Panchatantra',
@@ -181,3 +194,105 @@ export const LION_AND_HARE: { id: string; title: string; byline: string; beats: 
     },
   ],
 };
+
+/**
+ * "The Hare in the Moon", retold from the Sasa Jataka (public domain). The
+ * hare you make is drawn on the moon at the end, and stays there: it is saved
+ * and shown in your theater's moon on every later visit.
+ */
+export const HARE_IN_THE_MOON: Tale = {
+  id: 'hare-in-the-moon',
+  title: 'The Hare in the Moon',
+  byline: 'a tale from the Jataka',
+  beats: [
+    {
+      enter: (c) => {
+        c.clearStage();
+        c.setForest(true);
+        c.setMoon(true);
+      },
+      hold: 5,
+    },
+    {
+      narration: 'On the bank of a wide river lived four friends:\na hare, a stag, a peacock and a tortoise.',
+      instruction: 'Raise two fingers for the hare, and hold still',
+      until: (c) => !!c.find('hare') && c.find('hare')!.state !== 'awakening',
+      hold: 4,
+      assistAfter: 22,
+      assistText: 'Or pinch, and the lantern will shape the hare',
+      assist: (c) => void (c.find('hare') ?? c.summon('hare', c.width * 0.45)),
+    },
+    {
+      narration: 'The hare taught his friends to share\nwith anyone in need.',
+      instruction: 'Bring one of his friends: a stag, a peacock or a tortoise',
+      until: (c) => c.others('hare', 'wisp').some((o) => o.state !== 'awakening'),
+      hold: 3,
+      assistAfter: 22,
+      assistText: 'Or pinch, and a peacock will come',
+      assist: (c) => void (c.others('hare', 'wisp')[0] ?? c.summon('peacock', c.width * 0.66)),
+    },
+    {
+      narration: 'One evening an old traveller came out of the dusk,\nweak with hunger.',
+      enter: (c) => void (c.find('wisp') ?? c.summon('wisp', c.width * 0.16)),
+      hold: 6.5,
+    },
+    {
+      narration: 'Each friend brought him something to eat.\nBut the hare had only grass to give.',
+      enter: (c) => {
+        for (const o of c.others('hare', 'wisp')) o.nudge();
+      },
+      hold: 7,
+    },
+    {
+      narration: '“Light a fire,” said the hare,\n“and I will be your supper.”',
+      instruction: 'Close your hand, then open it wide to light the fire',
+      until: (c) => c.roarGesture,
+      hold: 3,
+      assistAfter: 16,
+      assistText: 'Or pinch to light the fire',
+      skipOnAssist: true,
+    },
+    {
+      narration: 'The fire leapt up, and the hare\nleapt toward it.',
+      instruction: 'Pinch the hare’s shadow and carry him to the fire',
+      enter: (c) => c.setFire(true, c.width * 0.5),
+      until: (c) => {
+        const hare = c.find('hare');
+        return !!hare && hare.state !== 'carried' && Math.abs(hare.x - c.fireX) < 0.3 * c.ground.unit;
+      },
+      hold: 2,
+      assistAfter: 24,
+      assistText: 'Or wait, and he will go himself',
+      assist: (c) => c.find('hare')?.goTo(c.fireX, c.ground),
+    },
+    {
+      narration: 'But the flames did not burn him.\nThey were as cool as moonlight.',
+      enter: (c) => {
+        const t = c.find('wisp');
+        if (t) c.glow(t);
+        c.find('hare')?.nudge();
+      },
+      hold: 6.5,
+    },
+    {
+      narration: 'The traveller was Shakra, king of the heavens.\n“Such kindness must never be forgotten.”',
+      hold: 7.5,
+    },
+    {
+      narration: 'And he drew the hare upon the moon.',
+      enter: (c) => {
+        c.setFire(false);
+        const hare = c.find('hare');
+        if (hare) c.drawOnMoon(hare);
+      },
+      hold: 6,
+    },
+    {
+      narration: 'Look for him there,\non the next full moon.',
+      enter: (c) => c.celebrate(),
+      hold: 7,
+    },
+  ],
+};
+
+export const TALES: Tale[] = [LION_AND_HARE, HARE_IN_THE_MOON];

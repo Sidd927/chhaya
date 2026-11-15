@@ -15,10 +15,11 @@ Chhaya is designed for one person, seated, in their own room, for 5–10 minutes
 | First creature | *Every shape you hold still comes alive. Try two fingers up for ears.* The shadow's edges glow ember while it "breathes" (1.1 s), then it shrinks onto the stage and hops away. Toast: *A hare! 1 of 8 shadows found.* | The core magic, delivered within the first minute without a tutorial screen. |
 | Menu | Two ink medallions on the stage: *Hear a tale* and *Open stage*, plus a small *Move stage*. *Cover a light with your hand's shadow to choose.* | The interface is part of the theater. Selecting means covering with your shadow (1.1 s dwell with a filling gold ring); pinching while covered is a quick confirm. |
 | The tale (~5–6 min) | *The Lion and the Clever Hare.* Narration below the stage; instructions in small gold capitals. The user makes a lion (claw), forest animals, then a hare. They carry the hare to the lion by pinching its shadow, lead the lion to the well, then snap their hand open to roar; the reflection roars back. | Every character is performed by the user's hands, with no fail states. Each wait offers an assist after ~22 s: *Or pinch, and the lantern will shape him for you.* It acts on its own 18 s later. |
-| The End | *Wit is stronger than strength.* Then *Tell it again* / *Open stage*. | A clean ending inside ten minutes. |
+| The End | *Wit is stronger than strength.* Then *Another tale* / *Open stage*. | A clean ending inside ten minutes. |
+| The second tale | *The Hare in the Moon.* Make the hare and one friend; a traveller (a wisp) arrives; close then open your hand to light a fire; carry the hare into it. The traveller glows and draws the hare on the moon. | The keepsake: the silhouette of the hare **you** made is saved and appears in the theater's moon on every later visit. |
 | Open stage | Forest scenery. *The stage is yours.* Every 10 s a hint for an undiscovered shape: *Undiscovered: spread your hand wide.* A *Curtain* medallion returns to the menu. | Open play and collection: eight shadows to find. |
 | Leaving | The Quest menu ends the session. The landing page says *You have woken 3 of 8 shadows; the rest are waiting.* | A reason to come back. |
-| Returning | The stage is restored on the same wall from a persistent anchor. *Your stage is where you left it.* The tutorial is skipped. | Getting back in takes seconds. |
+| Returning | The stage is restored on the same wall from a persistent anchor. *Your stage is where you left it.* The tutorial is skipped; the menu names tonight's tale (the one not yet heard), and your moon hare hangs over the stage. | Getting back in takes seconds, with a reason to come back. |
 
 ## Hand interactions
 

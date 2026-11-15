@@ -20,8 +20,10 @@ Built for the Meta VR Start Developer Competition 2026 (Entertainment track, New
 1. **Choose a stage.** Look at a wall in your room and pinch. That wall becomes the stage. No wall in view? A paper screen hangs in front of you.
 2. **Raise a hand into the light.** A small paper lantern floats within reach. Your hand's shadow falls on the wall, larger and softer as you move toward the lantern, crisper toward the wall.
 3. **Hold a shape still.** The shadow breathes, its edges glow, and it comes alive with your hand's exact silhouette. Two fingers make a hare, a claw a lion, a spread hand a peacock, a fist a tortoise. There are eight to find.
-4. **Hear a tale.** *The Lion and the Clever Hare*, from the Panchatantra. You perform every character: carry the hare to the lion by pinching its shadow, lead the lion to the well, and snap your hand open to make him roar at his reflection.
-5. **Come back.** Your theater remembers your wall (persistent anchors) and the shadows you have found.
+4. **Hear a tale.** You perform every character with your hands.
+   - *The Lion and the Clever Hare* (Panchatantra): carry the hare to the lion by pinching its shadow, lead the lion to the well, then snap your hand open so he roars at his own reflection.
+   - *The Hare in the Moon* (Jataka): light the traveller's fire with your hand and carry the hare into it. At the end the hare **you** made is drawn on the moon.
+5. **Come back.** Your theater remembers your wall (persistent anchors), the shadows you have found, and your hare in the moon, which hangs over the stage on every later visit.
 
 | | |
 | --- | --- |
@@ -29,6 +31,8 @@ Built for the Meta VR Start Developer Competition 2026 (Entertainment track, New
 | Look at a wall and pinch | Hold a shape still and it wakes |
 | ![Choosing by shadow](docs/media/menu.jpg) | ![The open stage](docs/media/open-stage.jpg) |
 | Choose by covering a light with your shadow | Eight shadows to discover |
+| ![The traveller's fire](docs/media/fire.jpg) | ![Your hare on the moon](docs/media/moon.jpg) |
+| *The Hare in the Moon*: carry the hare to the fire | The hare you made stays on the moon |
 
 ## Why it has to be mixed reality
 
@@ -80,11 +84,11 @@ npm run tune-shapes  # checks the shape classifier against IWER's hand poses
 ## Status and limits
 
 - Developed and verified in Meta's Immersive Web Emulator. **Not yet tested on a physical Quest**; see [docs/TESTING_REPORT.md](docs/TESTING_REPORT.md).
-- One tale and eight creature types. No multiplayer, no voice narration (captions only).
+- Two tales and eight creature types. No multiplayer, no voice narration (captions only).
 
 ## Roadmap
 
-- More tales (*The Tortoise and the Geese*, *The Monkey and the Crocodile*), one per evening.
+- More tales (*The Tortoise and the Geese*, *The Monkey and the Crocodile*), one per evening, each leaving something of yours in the theater as the moon hare does.
 - Two-handed creatures.
 - Shared stages.
 - Recording your own shadow plays.
@@ -95,5 +99,5 @@ npm run tune-shapes  # checks the shape classifier against IWER's hand poses
 - Code: MIT (see [LICENSE](LICENSE)). The project began from the IWSDK starter (`npm create @iwsdk`, MIT, Meta Platforms).
 - `src/theater/canonical-shapes.json` is derived from IWER's hand pose library (MIT, Meta Platforms).
 - Fonts: [Fraunces](https://github.com/undercasetype/Fraunces) and [Manrope](https://github.com/sharanda/manrope), SIL Open Font License 1.1, via Fontsource.
-- *The Lion and the Clever Hare* is retold from the Panchatantra (public domain).
+- *The Lion and the Clever Hare* (Panchatantra) and *The Hare in the Moon* (Sasa Jataka) are retold from public-domain sources.
 - All visuals are procedural and all sound is synthesized; no third-party art or audio is included.

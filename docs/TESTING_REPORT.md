@@ -35,6 +35,7 @@ Each row was performed with emulated hands (named poses, transforms, pinch value
 | Light button pressed by covering it with the hand's shadow | Flat hand over "Hear a tale" → `tale` | Pass |
 | A button already covered when it appears does not fire until uncovered | Code path added after a scripted run pressed a button the moment the menu appeared | Pass in later runs |
 | The whole tale with real gestures | Claw → lion, rock → stag, peace → hare; pinch-carry the hare to the lion; carry the lion to the well; fist → open roar; leap; ending | Pass (several full runs; `scripts/dev/demo-take.sh` completes to `tale-end`) |
+| Second tale, *The Hare in the Moon* | In-page choreography (`scripts/dev/choreo.js`, segments `moon1` and `moon2`): returning-visitor save → menu names the tale → peace → hare, open → peacock, traveller summoned, fist → open lights the fire, pinch-carry the hare to the fire, glow, hare leaps to the moon, silhouette saved | Pass. `tale-end` reached; `moonHare` saved; moon shows the silhouette. |
 | Tale assists | Beats left alone complete through their auto-assist | Pass (seen in a run whose gestures failed, which still reached `tale-end`) |
 | Open stage, all species | claw, rock, open, fist, point → lion, stag, peacock, tortoise, snake | Pass |
 | Persistent stage | Place stage → reload → re-enter while looking elsewhere → stage restored at the same centre; subtitle "your stage is where you left it" | Pass (IWER's persistent anchor implementation) |

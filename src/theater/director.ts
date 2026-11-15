@@ -25,7 +25,7 @@ import { Save } from './save.js';
 import { Scenery } from './scenery.js';
 import { ShadowLayer } from './shadow-layer.js';
 import { Stage, type Projected } from './stage.js';
-import { LION_AND_HARE, type Beat, type TaleContext } from './tale.js';
+import { TALES, type Beat, type Tale, type TaleContext } from './tale.js';
 import { LightButton, loadFonts, TextPlane } from './text.js';
 
 type Phase = 'waiting' | 'dim' | 'wall' | 'curtain' | 'first-light' | 'first-shape' | 'menu' | 'tale' | 'tale-end' | 'open';
@@ -104,6 +104,7 @@ export class TheaterSystem extends createSystem({}) {
   private readonly gazeHit = new Vector3();
   private gazeWall: { center: Vector3; normal: Vector3; halfW: number; halfH: number; hitValid: boolean } | null = null;
   private beatIndex = -1;
+  private tale: Tale = TALES[0];
   private beatTime = 0;
   private assistShown = false;
   private reflection = false;
@@ -179,7 +180,7 @@ export class TheaterSystem extends createSystem({}) {
     mk('Hear a tale', 'tale');
     mk('Open stage', 'open');
     mk('Curtain', 'curtain');
-    mk('Tell it again', 'again');
+    mk('Another tale', 'again');
     mk('Move stage', 'move');
 
     this.cleanupFuncs.push(
@@ -190,6 +191,9 @@ export class TheaterSystem extends createSystem({}) {
     this.cleanupFuncs.push(() => window.removeEventListener('chhaya:enter', enter));
     (window as any).__chhaya = { state: theaterState, system: this };
     if (import.meta.env.DEV) {
+      (window as any).__chhaya.loadSave = () => {
+        this.save = new Save();
+      };
       (window as any).__chhaya.resetSave = () => {
         localStorage.removeItem('chhaya.save.v1');
         this.save = new Save();
@@ -233,6 +237,9 @@ export class TheaterSystem extends createSystem({}) {
     this.reveal = 0;
     this.scenery.forestTarget = 0;
     this.scenery.wellTarget = 0;
+    this.scenery.fireTarget = 0;
+    this.scenery.moonHare = this.save.data.moonHare;
+    this.scenery.moonTarget = this.save.data.moonHare ? 1 : 0;
     this.sound.start();
     this.sound.drone(0.7);
     // Entering from the browser's own XR button may leave audio suspended;
@@ -263,6 +270,14 @@ export class TheaterSystem extends createSystem({}) {
         detail: { active: false, discovered: this.save.data.discovered.length, total: ALL_SPECIES.length },
       }),
     );
+  }
+
+  /** The next tale: the first one not yet heard, otherwise the one after the last told. */
+  private nextTale(): Tale {
+    const unheard = TALES.find((t) => !this.save.data.talesFinished.includes(t.id));
+    if (unheard) return unheard;
+    const last = TALES.findIndex((t) => t.id === this.save.data.lastTale);
+    return TALES[(last + 1) % TALES.length];
   }
 
   private setPhase(p: Phase): void {
@@ -305,22 +320,29 @@ export class TheaterSystem extends createSystem({}) {
         this.subtitle.hide();
         this.scenery.forestTarget = 0;
         this.scenery.wellTarget = 0;
+        this.scenery.fireTarget = 0;
+        this.scenery.moonTarget = this.scenery.moonHare ? 1 : 0;
         const n = this.save.discoveredCount;
-        this.narration.show(n > 0 ? `Your theater has met ${n} of ${ALL_SPECIES.length} shadows.` : 'What shall we play?');
-        this.instruction.show('Cover a light with your hand’s shadow to choose');
+        this.narration.show(`Tonight’s tale: ${this.nextTale().title}.`);
+        this.instruction.show(
+          n > 0 ? `${n} of ${ALL_SPECIES.length} shadows found · cover a light to choose` : 'Cover a light with your hand’s shadow to choose',
+        );
         this.placeButtons(['tale', 'open', 'move']);
         break;
       }
       case 'tale':
         this.beatIndex = -1;
-        this.title.show(LION_AND_HARE.title);
-        this.subtitle.show(LION_AND_HARE.byline);
+        this.tale = this.nextTale();
+        this.save.setLastTale(this.tale.id);
+        this.scenery.fireTarget = 0;
+        this.title.show(this.tale.title);
+        this.subtitle.show(this.tale.byline);
         this.narration.hide();
         this.instruction.hide();
         this.nextBeat();
         break;
       case 'tale-end':
-        this.save.finishTale(LION_AND_HARE.id);
+        this.save.finishTale(this.tale.id);
         this.title.hide();
         this.narration.show('The End.');
         this.instruction.show('Cover a light to choose');
@@ -1037,6 +1059,7 @@ export class TheaterSystem extends createSystem({}) {
     const layer = this.layer;
     layer.begin();
     this.scenery.emit(layer);
+    this.scenery.emitMoonAndFire(layer);
     if (this.reflectionAlpha > 0.01) {
       const lion = this.creatures.find((c) => c.species === 'lion');
       const cx = this.scenery.wellX;
@@ -1129,6 +1152,29 @@ export class TheaterSystem extends createSystem({}) {
         hare?.goTo(this.stage.width * 0.5, this.ground());
       },
       clearStage: (except) => this.clearStage(except),
+      setMoon: (on) => (this.scenery.moonTarget = on || !!this.scenery.moonHare ? 1 : 0),
+      setFire: (on, x) => {
+        this.scenery.fireTarget = on ? 1 : 0;
+        if (x !== undefined) this.scenery.fireX = x;
+        if (on) this.sound.splash(this.stage.toWorld(this.scenery.fireX, 0.2, 0, this.tmpV));
+      },
+      get fireX() {
+        return self.scenery.fireX;
+      },
+      glow: (c) => {
+        c.glow();
+        this.sound.chime(0.75, this.stage.toWorld(c.x, 0.4, 0, this.tmpV), 0.25);
+      },
+      drawOnMoon: (c) => {
+        const shape = c.snapshot();
+        const sc = this.scenery;
+        c.leap(sc.moonX, sc.moonY - sc.moonR * 0.6);
+        setTimeout(() => {
+          sc.moonHare = shape;
+          this.save.setMoonHare(shape);
+          [1, 1.5, 2].forEach((p, i) => setTimeout(() => this.sound.chime(p, null, 0.14), i * 260));
+        }, 1050);
+      },
     };
   }
 
@@ -1156,7 +1202,7 @@ export class TheaterSystem extends createSystem({}) {
   }
 
   private currentBeat(): Beat | undefined {
-    return LION_AND_HARE.beats[this.beatIndex];
+    return this.tale.beats[this.beatIndex];
   }
 
   private runTale(dt: number): void {
