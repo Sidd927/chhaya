@@ -1,12 +1,23 @@
 /**
  * Chhaya — a shadow theater for your hands.
- * Entry point: creates the IWSDK world, registers the theater, and connects
- * the landing page to the immersive session.
+ * Entry point: shows the landing page at once, creates the IWSDK world, and
+ * connects the two.
  */
 import { VisibilityState, World } from '@iwsdk/core';
 import projectOptions from 'virtual:iwsdk-project';
-import { TheaterSystem } from './theater/director.js';
 import { initLanding } from './landing.js';
+import { TheaterSystem } from './theater/director.js';
+
+let resolveWorld: (w: World) => void;
+const worldReady = new Promise<World>((r) => (resolveWorld = r));
+
+initLanding({
+  ready: worldReady.then((w) => w.xrEnabled),
+  enter: () => {
+    window.dispatchEvent(new Event('chhaya:enter'));
+    void worldReady.then((w) => w.launchXR());
+  },
+});
 
 World.create(document.getElementById('scene-container') as HTMLDivElement, projectOptions).then((world) => {
   world.registerSystem(TheaterSystem);
@@ -15,7 +26,7 @@ World.create(document.getElementById('scene-container') as HTMLDivElement, proje
   // hand meshes stay hidden. The browser emulator has no real hands to see,
   // so there (and with ?hands=1) the rendered hands are shown.
   const params = new URLSearchParams(location.search);
-  const emulated = !!(window as any).IWER_DEVICE || !!(window as any).__IWER__ || import.meta.env.DEV;
+  const emulated = import.meta.env.DEV || !!(window as any).IWER_DEVICE;
   const showHands = params.get('hands') === '1' || (params.get('hands') !== '0' && emulated);
   const applyHandVisuals = () => {
     const adapters = world.input.visualAdapters.hand;
@@ -25,12 +36,5 @@ World.create(document.getElementById('scene-container') as HTMLDivElement, proje
   world.visibilityState.subscribe((v) => {
     if (v !== VisibilityState.NonImmersive) requestAnimationFrame(applyHandVisuals);
   });
-
-  initLanding({
-    canEnter: () => world.xrEnabled,
-    enter: () => {
-      window.dispatchEvent(new Event('chhaya:enter'));
-      world.launchXR();
-    },
-  });
+  resolveWorld(world);
 });

@@ -220,6 +220,14 @@ export class TheaterSystem extends createSystem({}) {
     this.scenery.wellTarget = 0;
     this.sound.start();
     this.sound.drone(0.7);
+    // Entering from the browser's own XR button may leave audio suspended;
+    // the first pinch is a user gesture that can resume it.
+    const session = this.world.session;
+    if (session) {
+      const resume = () => this.sound.start();
+      session.addEventListener('selectstart', resume);
+      session.addEventListener('end', () => session.removeEventListener('selectstart', resume), { once: true });
+    }
     this.stageAnchor = null;
     this.restoring = null;
     this.restoreFailed = false;

@@ -12,7 +12,8 @@ import { ALL_SPECIES, SPECIES_INFO } from './theater/hand-shape.js';
 import { Save } from './theater/save.js';
 
 interface LandingOptions {
-  canEnter: () => boolean;
+  /** Resolves with whether the world can start an XR session. */
+  ready: Promise<boolean>;
   enter: () => void;
 }
 
@@ -46,7 +47,8 @@ export function initLanding(opts: LandingOptions): void {
     } catch {
       ar = false;
     }
-    if (ar && opts.canEnter()) {
+    const xrEnabled = await opts.ready;
+    if (ar && xrEnabled) {
       button.disabled = false;
       label.textContent = save.data.visits > 0 ? 'Return to the theater' : 'Enter the theater';
       status.textContent = '';
