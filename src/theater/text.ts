@@ -50,7 +50,7 @@ const STYLES: Record<TextStyle, { font: string; color: string; size: number; spa
   narration: { font: 'italic 400 {s}px Fraunces, Georgia, serif', color: '#F6E4C6', size: 112 },
   instruction: { font: '700 {s}px Manrope, Helvetica, sans-serif', color: '#F2B866', size: 96, spacing: 6, upper: true },
   title: { font: '600 {s}px Fraunces, Georgia, serif', color: '#FBEBD0', size: 230 },
-  subtitle: { font: 'italic 400 {s}px Fraunces, Georgia, serif', color: '#E9C99A', size: 92 },
+  subtitle: { font: 'italic 400 {s}px Fraunces, Georgia, serif', color: '#E9C99A', size: 118 },
 };
 
 /** A plane of text that fades in and out. Width in metres; height follows aspect. */
@@ -208,6 +208,8 @@ export class LightButton {
   progress = 0;
   covered = false;
   enabled = false;
+  /** A button must be seen uncovered once before it accepts a press. */
+  armed = false;
   /** Stage coordinates of the button centre. */
   x = 0;
   y = 0;
@@ -243,7 +245,8 @@ export class LightButton {
     u.uHover.value += ((this.covered ? 1 : 0) - u.uHover.value) * Math.min(1, dt * 8);
     u.uTime.value = time;
     let fired = false;
-    if (this.enabled && this.visibility > 0.9 && this.covered) {
+    if (this.enabled && !this.covered && this.visibility > 0.5) this.armed = true;
+    if (this.enabled && this.armed && this.visibility > 0.9 && this.covered) {
       this.progress += dt / 1.1;
       if (this.progress >= 1) {
         fired = true;

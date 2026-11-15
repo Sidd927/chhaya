@@ -190,6 +190,17 @@ export class TheaterSystem extends createSystem({}) {
     this.cleanupFuncs.push(() => window.removeEventListener('chhaya:enter', enter));
     (window as any).__chhaya = { state: theaterState, system: this };
     if (import.meta.env.DEV) {
+      // Geometry beacon for the emulator demo driver (scripts/dev/geo.py).
+      setInterval(() => {
+        if (this.phase === 'waiting') return;
+        const v = (x: Vector3) => x.toArray().map((n) => +n.toFixed(4));
+        console.info('[chhaya] geo ' + JSON.stringify({
+          phase: this.phase, beat: this.beatIndex, placed: this.stage.placed,
+          o: v(this.stage.origin), r: v(this.stage.right), u: v(this.stage.up), n: v(this.stage.normal),
+          w: this.stage.width, h: this.stage.height, c: v(this.projector), l: v(this.lantern.light),
+          wellX: this.scenery.wellX, cr: this.debugCreatures(), b: this.debugButtons(),
+        }));
+      }, 500);
       setInterval(() => {
         if (this.phase === 'waiting') return;
         console.info('[chhaya] state', JSON.stringify({ ...theaterState, dim: +this.dim.toFixed(2), head: this.headPos.toArray().map((v) => +v.toFixed(2)), lantern: this.lantern.light.toArray().map((v) => +v.toFixed(2)), hands: this.hands.both.map((h) => h.tracked ? `${h.reading?.species ?? '-'}:${h.stillFor.toFixed(1)}` : 'x') }));
@@ -724,6 +735,7 @@ export class TheaterSystem extends createSystem({}) {
       s.toWorld(x, y - b.radius - (small ? 0.045 : 0.07) * k, 0.014, b.label.mesh.position);
       b.label.mesh.quaternion.copy(s.mesh.quaternion);
       b.enabled = true;
+      b.armed = false;
       b.progress = 0;
     };
     main.forEach((id, i) => put(id, s.width * (main.length === 1 ? 0.5 : 0.3 + 0.4 * i), s.height * 0.56, false));
@@ -736,9 +748,12 @@ export class TheaterSystem extends createSystem({}) {
       if (!b.enabled) continue;
       for (const h of this.hands.both) {
         const sh = this.shadows[h.side];
-        if (h.tracked && sh.valid && this.covers(sh, b.x, b.y, b.radius * 0.5)) {
+        // The palm's own shadow must be near the button: a hand right next to
+        // the lantern throws a shadow over everything and should press nothing.
+        const near = Math.hypot(sh.cx - b.x, sh.cy - b.y) < Math.max(b.radius * 3.2, 0.4 * this.scenery.unit);
+        if (h.tracked && sh.valid && near && this.covers(sh, b.x, b.y, b.radius * 0.5)) {
           b.covered = true;
-          if (h.pinchStarted) b.progress = 1;
+          if (h.pinchStarted && b.armed) b.progress = 1;
         }
       }
     }
