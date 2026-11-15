@@ -23,14 +23,14 @@ def beacon():
     for entry in reversed(result):
         msg = entry.get('message', '')
         # Ignore beacons from before a reload: they describe another session.
-        if now - entry.get('timestamp', 0) > 1500:
+        if now - entry.get('timestamp', 0) > 20000:
             continue
         if msg.startswith('[chhaya] geo '):
             return json.loads(msg[len('[chhaya] geo '):])
     return None
 
 g = None
-for _ in range(6):
+for _ in range(20):
     g = beacon()
     if g is not None and (sys.argv[1] != 'stage' or g.get('placed')):
         break

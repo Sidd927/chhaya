@@ -190,6 +190,10 @@ export class TheaterSystem extends createSystem({}) {
     this.cleanupFuncs.push(() => window.removeEventListener('chhaya:enter', enter));
     (window as any).__chhaya = { state: theaterState, system: this };
     if (import.meta.env.DEV) {
+      (window as any).__chhaya.resetSave = () => {
+        localStorage.removeItem('chhaya.save.v1');
+        this.save = new Save();
+      };
       // Geometry beacon for the emulator demo driver (scripts/dev/geo.py).
       setInterval(() => {
         if (this.phase === 'waiting') return;
@@ -317,8 +321,8 @@ export class TheaterSystem extends createSystem({}) {
         break;
       case 'tale-end':
         this.save.finishTale(LION_AND_HARE.id);
-        this.title.show('The End');
-        this.narration.hide();
+        this.title.hide();
+        this.narration.show('The End.');
         this.instruction.show('Cover a light to choose');
         this.placeButtons(['again', 'open']);
         break;

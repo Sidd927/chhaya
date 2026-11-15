@@ -8,7 +8,7 @@ anim() { npx @iwsdk/cli xr animate-to --input-json "$1" >/dev/null 2>&1; }
 waitfor() { for _ in $(seq 1 ${2:-40}); do case "$(python3 scripts/dev/geo.py phase)" in $1) return 0;; esac; sleep 0.5; done; echo "timeout waiting for $1"; }
 rest_r() { anim '{"device":"hand-right","position":{"x":0.24,"y":1.02,"z":-0.3},"anchor":"wrist","duration":0.9,"easing":"minimum-jerk"}'; cli xr set-hand-pose --input-json '{"device":"hand-right","poseId":"default","duration":0.3}'; }
 # Move the right palm so its shadow lands on stage (x, y), then take a pose.
-palm() { local pos; pos=$(python3 scripts/dev/geo.py aim $1 $2 ${5:-0.3}); IFS=, read -r X Y Z <<< "$pos"
+palm() { local pos=""; for _ in 1 2 3; do pos=$(python3 scripts/dev/geo.py aim $1 $2 ${5:-0.3}); [ -n "$pos" ] && break; done; IFS=, read -r X Y Z <<< "$pos"
   anim "{\"device\":\"hand-right\",\"position\":{\"x\":$X,\"y\":$Y,\"z\":$Z},\"anchor\":\"middle-finger-metacarpal\",\"orientation\":{\"fingers\":[0,1,0],\"palm\":[0,0,-1]},\"duration\":${4:-1.1},\"easing\":\"minimum-jerk\"}"
   cli xr set-hand-pose --input-json "{\"device\":\"hand-right\",\"poseId\":\"$3\",\"duration\":0.35}"; }
 grasp_to() { local pos; pos=$(python3 scripts/dev/geo.py aim $1 $2 0.32); IFS=, read -r X Y Z <<< "$pos"
@@ -17,7 +17,7 @@ carry() { local P; P=$(python3 scripts/dev/geo.py creature $1); IFS=, read -r CX
   local MX; MX=$(python3 -c "print(($CX+$2)/2)"); grasp_to $MX $(python3 -c "print($CY+0.35)") 0.9; grasp_to $2 $CY 0.9
   cli xr set-select-value --input-json '{"device":"hand-right","value":0,"duration":0.2}'; sleep 0.4; rest_r; }
 
-ev "localStorage.removeItem('chhaya.save.v1'); return 1" >/dev/null; cli browser reload; sleep 5; cli xr enter; sleep 0.3
+ev "window.__chhaya.resetSave(); const w = window.__chhaya.system.world; if (w.session) await w.session.end(); return 1" >/dev/null; sleep 3; cli xr enter; sleep 0.3
 [ -n "$RECORD" ] && (./scripts/dev/record-chunks.sh ${RECORD} > /tmp/chhaya-rec.log 2>&1 &) && sleep 2.5
 cli xr set-input-mode --input-json '{"mode":"hand"}'
 cli xr set-transform --input-json '{"device":"hand-left","position":{"x":-0.24,"y":1.02,"z":-0.3},"anchor":"wrist"}'
