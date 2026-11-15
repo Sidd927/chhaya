@@ -44,7 +44,7 @@ export class Lantern {
   private readonly paper: MeshBasicMaterial;
   private readonly halo: Sprite;
   private readonly core: Sprite;
-  private readonly base = new Color(1.0, 0.72, 0.42);
+  private readonly base = new Color(1.0, 0.6, 0.28);
   private t = Math.random() * 100;
   private readonly grabOffset = new Vector3();
 
