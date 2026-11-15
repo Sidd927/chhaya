@@ -116,6 +116,11 @@ export class TheaterSystem extends createSystem({}) {
   private wallDistance = 2.2;
   /** Focal point of the magic lantern: behind the lantern along the wall normal. */
   private readonly projector = new Vector3();
+  /** The anchor holding the stage on the wall, and one being restored. */
+  private stageAnchor: XRAnchor | null = null;
+  private restoring: XRAnchor | null = null;
+  private restoreFailed = false;
+  private restoredStage = false;
 
   private readonly tmpV = new Vector3();
   private readonly tmpV2 = new Vector3();
@@ -175,6 +180,7 @@ export class TheaterSystem extends createSystem({}) {
     mk('Open stage', 'open');
     mk('Curtain', 'curtain');
     mk('Tell it again', 'again');
+    mk('Move stage', 'move');
 
     this.cleanupFuncs.push(
       this.world.visibilityState.subscribe((v) => this.onVisibility(v)),
@@ -214,6 +220,10 @@ export class TheaterSystem extends createSystem({}) {
     this.scenery.wellTarget = 0;
     this.sound.start();
     this.sound.drone(0.7);
+    this.stageAnchor = null;
+    this.restoring = null;
+    this.restoreFailed = false;
+    this.beginRestore();
     this.setPhase('dim');
     window.dispatchEvent(new CustomEvent('chhaya:session', { detail: { active: true } }));
   }
@@ -254,7 +264,7 @@ export class TheaterSystem extends createSystem({}) {
         this.hudSub.hide();
         this.revealTarget = 1;
         this.title.show('Chhaya');
-        this.subtitle.show('a shadow theater for your hands');
+        this.subtitle.show(this.restoredStage ? 'your stage is where you left it' : 'a shadow theater for your hands');
         this.sound.chime(0.5, null, 0.25);
         break;
       case 'first-light':
@@ -275,7 +285,7 @@ export class TheaterSystem extends createSystem({}) {
         const n = this.save.discoveredCount;
         this.narration.show(n > 0 ? `Your theater has met ${n} of ${ALL_SPECIES.length} shadows.` : 'What shall we play?');
         this.instruction.show('Cover a light with your hand’s shadow to choose');
-        this.placeButtons(['tale', 'open']);
+        this.placeButtons(['tale', 'open', 'move']);
         break;
       }
       case 'tale':
@@ -363,7 +373,9 @@ export class TheaterSystem extends createSystem({}) {
       case 'dim':
         this.followHud();
         if (this.phaseTime > 2.2) {
-          if (!this.tryRestoreStage()) this.setPhase('wall');
+          // Give a saved stage a few seconds to be found in the room.
+          if (this.tryRestoreStage()) break;
+          if (this.restoreFailed || this.phaseTime > 6) this.setPhase('wall');
         }
         break;
       case 'wall':
@@ -449,9 +461,87 @@ export class TheaterSystem extends createSystem({}) {
     this.hudSub.mesh.quaternion.copy(this.hud.mesh.quaternion);
   }
 
+  /** Ask the browser for the stage anchor saved on a previous visit. */
+  private beginRestore(): void {
+    const record = this.save.data.stageAnchor;
+    const session = this.world.session as (XRSession & { restorePersistentAnchor?: (uuid: string) => Promise<XRAnchor> }) | undefined;
+    if (!record || !session?.restorePersistentAnchor) {
+      this.restoreFailed = true;
+      return;
+    }
+    session.restorePersistentAnchor(record.uuid).then(
+      (anchor) => {
+        this.restoring = anchor;
+      },
+      () => {
+        this.restoreFailed = true;
+        this.save.setStageAnchor(null);
+      },
+    );
+  }
+
+  /** Place the stage from a restored anchor once it has a pose. */
   private tryRestoreStage(): boolean {
-    // Persistent anchors restore asynchronously; see restoreAnchor().
-    return false;
+    const record = this.save.data.stageAnchor;
+    const frame = this.world.xrFrame;
+    const ref = this.world.xrReferenceSpace;
+    if (!record || !this.restoring || !frame || !ref) return false;
+    const pose = frame.getPose(this.restoring.anchorSpace, ref);
+    if (!pose) return false;
+    const m = new Matrix4().fromArray(pose.transform.matrix as unknown as number[]).premultiply(this.playerMatrix);
+    const center = new Vector3().setFromMatrixPosition(m);
+    const normal = new Vector3(0, 0, 1).transformDirection(m);
+    this.stageAnchor = this.restoring;
+    this.restoring = null;
+    this.placeLantern(normal.clone().negate());
+    this.stage.setFrame({ center, normal, width: record.width, height: record.height, paper: record.paper });
+    this.wallDistance = Math.max(0.8, this.stage.heightAbove(this.headPos));
+    this.restoredStage = true;
+    this.afterStagePlaced(false);
+    return true;
+  }
+
+  /** Anchor the stage to the room and ask for a handle that survives visits. */
+  private anchorStage(): void {
+    const frame = this.world.xrFrame as (XRFrame & { createAnchor?: (t: XRRigidTransform, s: XRSpace) => Promise<XRAnchor> }) | null;
+    const ref = this.world.xrReferenceSpace;
+    if (!frame?.createAnchor || !ref || typeof XRRigidTransform === 'undefined') return;
+    const p = this.stage.center;
+    const q = this.stage.mesh.quaternion;
+    const record = { width: this.stage.width, height: this.stage.height, paper: this.stage.paper };
+    const old = this.save.data.stageAnchor;
+    frame.createAnchor(new XRRigidTransform({ x: p.x, y: p.y, z: p.z }, { x: q.x, y: q.y, z: q.z, w: q.w }), ref).then(
+      async (anchor) => {
+        this.stageAnchor = anchor;
+        const persistent = anchor as XRAnchor & { requestPersistentHandle?: () => Promise<string> };
+        if (!persistent.requestPersistentHandle) return;
+        const uuid = await persistent.requestPersistentHandle();
+        this.save.setStageAnchor({ uuid, ...record });
+        const session = this.world.session as (XRSession & { deletePersistentAnchor?: (uuid: string) => Promise<void> }) | undefined;
+        if (old && old.uuid !== uuid) void session?.deletePersistentAnchor?.(old.uuid).catch(() => undefined);
+      },
+      () => undefined,
+    );
+  }
+
+  /** Forget the saved stage and choose a wall again. */
+  private moveStage(): void {
+    const old = this.save.data.stageAnchor;
+    const session = this.world.session as (XRSession & { deletePersistentAnchor?: (uuid: string) => Promise<void> }) | undefined;
+    if (old) void session?.deletePersistentAnchor?.(old.uuid).catch(() => undefined);
+    this.stageAnchor?.delete?.();
+    this.stageAnchor = null;
+    this.save.setStageAnchor(null);
+    for (const c of this.creatures) c.leave(c.x < this.stage.width / 2 ? -1 : 1);
+    this.creatures = [];
+    this.stage.placed = false;
+    this.stage.mesh.visible = false;
+    this.lantern.group.visible = false;
+    this.reveal = 0;
+    this.revealTarget = 0;
+    this.narration.hide();
+    this.instruction.hide();
+    this.setPhase('wall');
   }
 
   private chooseWall(dt: number): void {
@@ -579,7 +669,11 @@ export class TheaterSystem extends createSystem({}) {
     this.lantern.position.y = this.headPos.y - 0.24;
   }
 
-  private afterStagePlaced(): void {
+  private afterStagePlaced(isNew = true): void {
+    if (isNew) {
+      this.restoredStage = false;
+      this.anchorStage();
+    }
     this.reticle.visible = false;
     this.sound.tock();
     this.lantern.group.visible = true;
@@ -606,25 +700,26 @@ export class TheaterSystem extends createSystem({}) {
 
   private placeButtons(ids: string[]): void {
     const s = this.stage;
-    const slots = ids.length === 1 ? [[s.width - 0.2, s.height - 0.17]] : ids.map((_, i) => [s.width * (0.3 + 0.4 * i), s.height * 0.56]);
-    ids.forEach((id, i) => {
+    const k = Math.max(0.8, this.wallDistance / 2.2);
+    const main = ids.filter((id) => id !== 'curtain' && id !== 'move');
+    const corner = ids.filter((id) => id === 'curtain' || id === 'move');
+    const put = (id: string, x: number, y: number, small: boolean) => {
       const b = this.buttons.find((x) => x.id === id)!;
-      const [x, y] = slots[i];
-      const small = ids.length === 1;
       b.x = x;
       b.y = y;
-      b.radius = (small ? 0.07 : 0.12) * Math.max(0.8, this.wallDistance / 2.2);
+      b.radius = (small ? 0.07 : 0.12) * k;
       const d = b.radius * 2.4;
       s.toWorld(x, y, 0.014, b.group.position);
       b.group.quaternion.copy(s.mesh.quaternion);
       b.group.scale.set(d, d, 1);
-      const k = Math.max(0.8, this.wallDistance / 2.2);
       b.label.setWidth((small ? 0.36 : 0.62) * k);
-      s.toWorld(x, y - b.radius - (small ? 0.04 : 0.06), 0.014, b.label.mesh.position);
+      s.toWorld(x, y - b.radius - (small ? 0.045 : 0.07) * k, 0.014, b.label.mesh.position);
       b.label.mesh.quaternion.copy(s.mesh.quaternion);
       b.enabled = true;
       b.progress = 0;
-    });
+    };
+    main.forEach((id, i) => put(id, s.width * (main.length === 1 ? 0.5 : 0.3 + 0.4 * i), s.height * 0.56, false));
+    corner.forEach((id) => put(id, s.width - 0.22 * k, s.height - 0.2 * k, true));
   }
 
   private handleButtons(dt: number): void {
@@ -665,6 +760,9 @@ export class TheaterSystem extends createSystem({}) {
       case 'curtain':
         this.clearStage();
         this.setPhase('menu');
+        break;
+      case 'move':
+        this.moveStage();
         break;
     }
   }

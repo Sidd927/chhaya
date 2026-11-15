@@ -7,12 +7,20 @@ import { ALL_SPECIES, type Species } from './hand-shape.js';
 
 const KEY = 'chhaya.save.v1';
 
+/** A persistent WebXR anchor handle plus the stage it holds. */
+export interface StageAnchorRecord {
+  uuid: string;
+  width: number;
+  height: number;
+  paper: boolean;
+}
+
 export interface SaveData {
   discovered: Species[];
   talesFinished: string[];
   visits: number;
   tutorialDone: boolean;
-  stageAnchor: string | null;
+  stageAnchor: StageAnchorRecord | null;
   lastVisit: number;
 }
 
@@ -37,6 +45,7 @@ export class Save {
       this.data = fresh();
     }
     this.data.discovered = this.data.discovered.filter((s) => ALL_SPECIES.includes(s));
+    if (typeof this.data.stageAnchor === 'string') this.data.stageAnchor = null;
   }
 
   private write(): void {
@@ -71,8 +80,8 @@ export class Save {
     this.write();
   }
 
-  setStageAnchor(uuid: string | null): void {
-    this.data.stageAnchor = uuid;
+  setStageAnchor(record: StageAnchorRecord | null): void {
+    this.data.stageAnchor = record;
     this.write();
   }
 
