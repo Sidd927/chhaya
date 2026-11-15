@@ -10,19 +10,19 @@ import { CapsuleKind, type ShadowLayer } from './shadow-layer.js';
 export type CreatureState = 'awakening' | 'idle' | 'walking' | 'carried' | 'falling' | 'leaving' | 'leaping' | 'gone';
 
 const TARGET_HEIGHT: Record<Species, number> = {
-  hare: 0.26,
-  lion: 0.34,
-  stag: 0.36,
-  peacock: 0.34,
-  crocodile: 0.2,
-  tortoise: 0.17,
-  snake: 0.14,
-  wisp: 0.22,
+  hare: 0.38,
+  lion: 0.5,
+  stag: 0.52,
+  peacock: 0.5,
+  crocodile: 0.3,
+  tortoise: 0.25,
+  snake: 0.22,
+  wisp: 0.32,
 };
-const TARGET_WIDTH = 0.46;
+const TARGET_WIDTH = 0.66;
 
 const SPEED: Record<Species, number> = {
-  hare: 0.32,
+  hare: 0.22,
   lion: 0.11,
   stag: 0.15,
   peacock: 0.07,
@@ -49,6 +49,8 @@ export interface Ground {
   y: number;
   minX: number;
   maxX: number;
+  /** Stage scale: 1 for a 1.3 m tall stage. Sizes and speeds multiply by it. */
+  unit: number;
 }
 
 export class Creature {
@@ -63,6 +65,8 @@ export class Creature {
   age = 0;
   /** Set by the director while a pinch carries this creature. */
   carryX = 0;
+  /** During a tale creatures keep near their marks instead of roaming the stage. */
+  calm = false;
   carryY = 0;
 
   private readonly rest = new Float32Array(POINT_COUNT * 2);
@@ -70,6 +74,7 @@ export class Creature {
   private readonly boneRadii: Float32Array;
   private readonly depth: number;
   private readonly targetScale: number;
+  private unit = 1;
   private readonly startX: number;
   private readonly startY: number;
   private vy = 0;
@@ -96,6 +101,7 @@ export class Creature {
   constructor(species: Species, points: Float32Array, radii: Float32Array, depth: number, ground: Ground) {
     this.species = species;
     this.depth = depth;
+    this.unit = ground.unit;
     this.boneRadii = new Float32Array(radii);
 
     // Bounding box of the hand without its forearm.
@@ -119,7 +125,7 @@ export class Creature {
     }
     this.targetScale = Math.min(
       1.4,
-      Math.max(0.15, Math.min(TARGET_HEIGHT[species] / this.height, TARGET_WIDTH / this.width)),
+      Math.max(0.15, Math.min((TARGET_HEIGHT[species] * ground.unit) / this.height, (TARGET_WIDTH * ground.unit) / this.width)),
     );
     this.startX = cx;
     this.startY = minY;
@@ -148,7 +154,7 @@ export class Creature {
   }
 
   private clampX(x: number, g: Ground): number {
-    return Math.min(g.maxX - 0.15, Math.max(g.minX + 0.15, x));
+    return Math.min(g.maxX - 0.15 * g.unit, Math.max(g.minX + 0.15 * g.unit, x));
   }
 
   private setState(s: CreatureState): void {
@@ -214,7 +220,7 @@ export class Creature {
         const landX = this.clampX(this.startX, ground);
         this.x = this.startX + (landX - this.startX) * e;
         // Rise a little, then settle onto the ground.
-        this.y = this.startY + (ground.y - this.startY) * e + Math.sin(Math.PI * t) * 0.08;
+        this.y = this.startY + (ground.y - this.startY) * e + Math.sin(Math.PI * t) * 0.08 * this.unit;
         if (t >= 1) {
           this.walkTo = this.x;
           this.setState('idle');
@@ -226,22 +232,22 @@ export class Creature {
         this.y = ground.y;
         this.idleFor -= dt;
         if (this.idleFor <= 0 && this.species !== 'wisp') {
-          const span = ground.maxX - ground.minX;
-          const target = this.x + (Math.random() - 0.5) * span * 0.6;
+          const span = this.calm ? 0.35 * this.unit : (ground.maxX - ground.minX) * 0.6;
+          const target = this.x + (Math.random() - 0.5) * span;
           this.goTo(target, ground);
         } else if (this.idleFor <= 0) {
-          this.goTo(this.x + (Math.random() - 0.5) * 0.6, ground);
+          this.goTo(this.x + (Math.random() - 0.5) * 0.6 * this.unit, ground);
         }
         break;
       case 'walking': {
         this.y = ground.y;
         const dx = this.walkTo - this.x;
-        if (Math.abs(dx) < 0.02) {
+        if (Math.abs(dx) < 0.02 * this.unit) {
           this.setState('idle');
           this.idleFor = 1.5 + Math.random() * 3.5;
         } else {
           this.facing = dx > 0 ? 1 : -1;
-          this.x += Math.sign(dx) * Math.min(Math.abs(dx), SPEED[this.species] * dt * this.gait());
+          this.x += Math.sign(dx) * Math.min(Math.abs(dx), SPEED[this.species] * this.unit * dt * this.gait());
         }
         break;
       }
@@ -250,7 +256,7 @@ export class Creature {
         this.y += (this.carryY - this.y) * Math.min(1, dt * 14);
         break;
       case 'falling':
-        this.vy -= 3.2 * dt;
+        this.vy -= 3.2 * this.unit * dt;
         this.y += this.vy * dt;
         if (this.y <= ground.y) {
           this.y = ground.y;
@@ -263,13 +269,13 @@ export class Creature {
       case 'leaving':
         this.y = ground.y;
         this.facing = this.leaveDir;
-        this.x += this.leaveDir * Math.max(0.12, SPEED[this.species]) * dt * this.gait();
-        if (this.x < ground.minX - 0.4 || this.x > ground.maxX + 0.4) this.setState('gone');
+        this.x += this.leaveDir * Math.max(0.12, SPEED[this.species]) * this.unit * dt * this.gait();
+        if (this.x < ground.minX - 0.4 * this.unit || this.x > ground.maxX + 0.4 * this.unit) this.setState('gone');
         break;
       case 'leaping': {
         const t = Math.min(1, this.stateTime / 1.1);
         this.x = this.leapFrom[0] + (this.leapTo[0] - this.leapFrom[0]) * t;
-        this.y = this.leapFrom[1] + (this.leapTo[1] - this.leapFrom[1]) * t + Math.sin(Math.PI * t) * 0.35;
+        this.y = this.leapFrom[1] + (this.leapTo[1] - this.leapFrom[1]) * t + Math.sin(Math.PI * t) * 0.35 * this.unit;
         this.facing = this.leapTo[0] >= this.leapFrom[0] ? 1 : -1;
         if (t > 0.7) this.fade = Math.max(0, 1 - (t - 0.7) / 0.3);
         if (t >= 1) this.setState('gone');
@@ -417,10 +423,10 @@ export class Creature {
     let hop = 0;
     if (this.species === 'hare' && (this.state === 'walking' || this.state === 'leaving')) {
       const p = (this.phase / 0.7) % 1;
-      hop = p < 0.55 ? Math.sin((p / 0.55) * Math.PI) * 0.09 : 0;
+      hop = p < 0.55 ? Math.sin((p / 0.55) * Math.PI) * 0.09 * this.unit : 0;
     }
-    if (this.species === 'wisp' && this.state !== 'awakening') hop = 0.06 + Math.sin(this.phase * 1.7) * 0.03;
-    if (this.nudgeTime >= 0) hop += Math.sin((this.nudgeTime / 0.6) * Math.PI) * 0.07;
+    if (this.species === 'wisp' && this.state !== 'awakening') hop = (0.06 + Math.sin(this.phase * 1.7) * 0.03) * this.unit;
+    if (this.nudgeTime >= 0) hop += Math.sin((this.nudgeTime / 0.6) * Math.PI) * 0.07 * this.unit;
     let s = this.scale;
     if (this.roarTime >= 0) s *= 1 + 0.08 * Math.sin(Math.min(1, this.roarTime / 0.9) * Math.PI);
     if (this.species === 'wisp') s *= 1 + Math.sin(this.phase * 9) * 0.02;
@@ -444,8 +450,8 @@ export class Creature {
     if (this.blinkIn > 0 && awaken >= 1) {
       const ex = this.x + this.facing * this.eyeLocal[0] * s;
       const ey = this.y + this.eyeLocal[1] * s + hop;
-      const er = Math.max(0.006, 0.02 * s * (this.height / 0.3));
-      layer.push(ex, ey, ex, ey, Math.min(er, 0.014), depth, 0, CapsuleKind.Eye);
+      const er = 0.011 * this.unit;
+      layer.push(ex, ey, ex, ey, er, depth, 0, CapsuleKind.Eye);
     }
   }
 }

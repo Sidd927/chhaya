@@ -268,6 +268,8 @@ export class TheaterSystem extends createSystem({}) {
         this.instruction.show('Try two fingers up for ears, then hold still');
         break;
       case 'menu': {
+        this.title.hide();
+        this.subtitle.hide();
         this.scenery.forestTarget = 0;
         this.scenery.wellTarget = 0;
         const n = this.save.discoveredCount;
@@ -292,6 +294,8 @@ export class TheaterSystem extends createSystem({}) {
         this.placeButtons(['again', 'open']);
         break;
       case 'open':
+        this.title.hide();
+        this.subtitle.hide();
         this.scenery.forestTarget = 1;
         this.narration.show('The stage is yours.');
         this.instruction.show(this.nextHint());
@@ -639,6 +643,9 @@ export class TheaterSystem extends createSystem({}) {
       const fired = b.update(dt, this.clock) || (b.enabled && b.progress >= 1);
       if (fired && b.enabled) {
         b.progress = 0;
+        // The hand that pressed must move before it can wake a creature.
+        this.shadows.left.locked = true;
+        this.shadows.right.locked = true;
         this.sound.chime(1.5, null, 0.15);
         this.onButton(b.id);
         return;
@@ -777,6 +784,11 @@ export class TheaterSystem extends createSystem({}) {
         sh.awaken = 0;
         continue;
       }
+      // A hand pressing a light button is choosing, not performing.
+      if (this.buttons.some((b) => b.enabled && this.covers(sh, b.x, b.y, b.radius))) {
+        sh.awaken = 0;
+        continue;
+      }
       const onStage = this.shadowOnStage(sh);
       const species = h.steadySpecies;
       const reading = h.reading;
@@ -797,7 +809,7 @@ export class TheaterSystem extends createSystem({}) {
   }
 
   private ground(): Ground {
-    return { y: this.scenery.groundY, minX: 0.08, maxX: this.stage.width - 0.08 };
+    return { y: this.scenery.groundY, minX: 0.08, maxX: this.stage.width - 0.08, unit: this.scenery.unit };
   }
 
   private spawnFromShadow(sh: HandShadow, species: Species): Creature {
@@ -887,7 +899,11 @@ export class TheaterSystem extends createSystem({}) {
         }
       }
     }
-    for (const c of this.creatures) c.update(dt, ground);
+    const calm = this.phase === 'tale';
+    for (const c of this.creatures) {
+      c.calm = calm;
+      c.update(dt, ground);
+    }
     this.creatures = this.creatures.filter((c) => c.alive);
     this.reflectionAlpha += ((this.reflection ? 1 : 0) - this.reflectionAlpha) * Math.min(1, dt * 2);
   }
@@ -900,8 +916,9 @@ export class TheaterSystem extends createSystem({}) {
       const lion = this.creatures.find((c) => c.species === 'lion');
       const cx = this.scenery.wellX;
       const cy = this.stage.height * 0.72;
-      this.scenery.emitWaterRing(layer, cx, cy, 0.16, this.reflectionAlpha);
-      if (lion) lion.emitMirror(layer, cx, cy - 0.11, 0.42 * this.reflectionAlpha, this.clock);
+      const u = this.scenery.unit;
+      this.scenery.emitWaterRing(layer, cx, cy, 0.16 * u, this.reflectionAlpha);
+      if (lion) lion.emitMirror(layer, cx, cy, 0.42 * u * this.reflectionAlpha, this.clock);
     }
     for (const c of this.creatures) c.emit(layer);
     for (const h of this.hands.both) {
@@ -928,6 +945,25 @@ export class TheaterSystem extends createSystem({}) {
     const s = pool[this.hintIndex++ % pool.length];
     const info = SPECIES_INFO[s];
     return missing.length > 0 ? `Undiscovered: ${info.hint.toLowerCase()}` : `All ${ALL_SPECIES.length} shadows found. ${info.hint}`;
+  }
+
+  /** Dev/test helper: where to hold a palm so its shadow lands on stage (x, y). */
+  debugAim(x: number, y: number, fromLantern = 0.3): number[] {
+    const wall = this.stage.toWorld(x, y, 0, new Vector3());
+    const c = this.projector;
+    const target = this.stage.heightAbove(this.lantern.light) - fromLantern;
+    const t = (this.stage.heightAbove(c) - target) / Math.max(1e-3, this.stage.heightAbove(c));
+    return wall.sub(c).multiplyScalar(t).add(c).toArray();
+  }
+
+  /** Dev/test helper: where each creature stands. */
+  debugCreatures(): { s: string; x: number; y: number; st: string }[] {
+    return this.creatures.map((c) => ({ s: c.species, x: +c.x.toFixed(2), y: +c.centerY.toFixed(2), st: c.state }));
+  }
+
+  /** Dev/test helper: stage coordinates of the visible buttons. */
+  debugButtons(): { id: string; x: number; y: number }[] {
+    return this.buttons.filter((b) => b.enabled).map((b) => ({ id: b.id, x: b.x, y: b.y }));
   }
 
   // ─────────────────────────────── the tale ───────────────────────────────

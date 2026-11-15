@@ -18,48 +18,49 @@ function seeded(seed: number): () => number {
 
 type Cap = [number, number, number, number, number];
 
-function tree(x: number, height: number, seed: number): Cap[] {
+function tree(x: number, height: number, seed: number, u: number): Cap[] {
   const r = seeded(seed);
   const caps: Cap[] = [];
   const top = height;
-  caps.push([x, 0, x + 0.01, top * 0.62, 0.022]);
-  caps.push([x - 0.035, 0, x, 0.06, 0.012]);
-  caps.push([x + 0.035, 0, x, 0.05, 0.012]);
+  caps.push([x, 0, x + 0.01 * u, top * 0.62, 0.022 * u]);
+  caps.push([x - 0.035 * u, 0, x, 0.06 * u, 0.012 * u]);
+  caps.push([x + 0.035 * u, 0, x, 0.05 * u, 0.012 * u]);
   const branches = 5;
   for (let i = 0; i < branches; i++) {
     const by = top * (0.35 + 0.08 * i);
     const dir = i % 2 === 0 ? -1 : 1;
-    const len = 0.08 + r() * 0.07;
-    caps.push([x, by, x + dir * len, by + 0.06 + r() * 0.05, 0.007]);
+    const len = (0.08 + r() * 0.07) * u;
+    caps.push([x, by, x + dir * len, by + (0.06 + r() * 0.05) * u, 0.007 * u]);
   }
   // Canopy: a cloud of round leaves clusters.
   for (let i = 0; i < 26; i++) {
     const a = r() * Math.PI * 2;
     const d = Math.sqrt(r());
-    const cx = x + Math.cos(a) * d * 0.17;
-    const cy = top * 0.78 + Math.sin(a) * d * 0.11;
-    const rad = 0.03 + r() * 0.035;
-    caps.push([cx, cy, cx + (r() - 0.5) * 0.02, cy, rad]);
+    const cx = x + Math.cos(a) * d * 0.17 * u;
+    const cy = top * 0.78 + Math.sin(a) * d * 0.11 * u;
+    const rad = (0.03 + r() * 0.035) * u;
+    caps.push([cx, cy, cx + (r() - 0.5) * 0.02 * u, cy, rad]);
   }
   return caps;
 }
 
-function grass(width: number, seed: number): Cap[] {
+function grass(width: number, seed: number, u: number): Cap[] {
   const r = seeded(seed);
-  const caps: Cap[] = [[-0.2, -0.02, width + 0.2, -0.02, 0.07]];
-  const blades = Math.round(width * 70);
+  const caps: Cap[] = [[-0.2, -0.02 * u, width + 0.2, -0.02 * u, 0.07 * u]];
+  const blades = Math.round((width * 70) / u);
   for (let i = 0; i < blades; i++) {
-    const x = (i / blades) * width + (r() - 0.5) * 0.02;
-    const h = 0.04 + r() * 0.045;
-    const lean = (r() - 0.5) * 0.03;
-    caps.push([x, 0.03, x + lean, 0.03 + h, 0.0028]);
+    const x = (i / blades) * width + (r() - 0.5) * 0.02 * u;
+    const h = (0.04 + r() * 0.045) * u;
+    const lean = (r() - 0.5) * 0.03 * u;
+    caps.push([x, 0.03 * u, x + lean, 0.03 * u + h, 0.0028 * u]);
   }
   return caps;
 }
 
 /** A village well: stone drum, two posts, a beam, a rope and a bucket. */
-function well(x: number): Cap[] {
-  const caps: Cap[] = [];
+function well(x: number, u: number): Cap[] {
+  const raw: Cap[] = [];
+  const caps = raw;
   const w = 0.17;
   for (let row = 0; row < 5; row++) {
     const y = 0.05 + row * 0.04;
@@ -74,7 +75,7 @@ function well(x: number): Cap[] {
   caps.push([x, 0.48, x, 0.33, 0.0025]);
   caps.push([x - 0.025, 0.31, x + 0.025, 0.31, 0.02]);
   caps.push([x - 0.02, 0.29, x + 0.02, 0.29, 0.018]);
-  return caps;
+  return raw.map(([ax, ay, bx, by, r]) => [x + (ax - x) * u, ay * u, x + (bx - x) * u, by * u, r * u] as Cap);
 }
 
 export class Scenery {
@@ -87,19 +88,20 @@ export class Scenery {
   private treeCaps: Cap[] = [];
   private wellCaps: Cap[] = [];
   private width = 0;
+  unit = 1;
 
   layout(width: number, height: number): void {
-    if (Math.abs(width - this.width) < 1e-3) return;
     this.width = width;
-    this.grassCaps = grass(width, 11);
-    this.treeCaps = [...tree(width * 0.07, height * 0.82, 3), ...tree(width * 0.95, height * 0.66, 9)];
+    const u = (this.unit = height / 1.3);
+    this.grassCaps = grass(width, 11, u);
+    this.treeCaps = [...tree(width * 0.07, height * 0.82, 3, u), ...tree(width * 0.95, height * 0.66, 9, u)];
     this.wellX = width * 0.74;
-    this.wellCaps = well(this.wellX);
+    this.wellCaps = well(this.wellX, u);
   }
 
   /** Top of the ground where creatures stand. */
   get groundY(): number {
-    return 0.07;
+    return 0.07 * this.unit;
   }
 
   update(dt: number): void {
@@ -112,14 +114,14 @@ export class Scenery {
     const ease = (t: number) => t * t * (3 - 2 * t);
     const f = ease(this.forest);
     if (f > 0.001) {
-      const sink = (1 - f) * 0.12;
+      const sink = (1 - f) * 0.12 * this.unit;
       for (const c of this.grassCaps) layer.push(c[0], c[1] - sink, c[2], c[3] - sink, c[4], 0.97);
       const tsink = (1 - f) * 0.9;
       for (const c of this.treeCaps) layer.push(c[0], c[1] - tsink, c[2], c[3] - tsink, c[4] * f, 0.95);
     }
     const w = ease(this.wellGrow);
     if (w > 0.001) {
-      const sink = (1 - w) * 0.65;
+      const sink = (1 - w) * 0.65 * this.unit;
       for (const c of this.wellCaps) layer.push(c[0], c[1] - sink, c[2], c[3] - sink, c[4], 0.96);
     }
   }
@@ -136,7 +138,7 @@ export class Scenery {
         cy + Math.sin(a0) * radius,
         cx + Math.cos(a1) * radius,
         cy + Math.sin(a1) * radius,
-        0.016 * alpha,
+        0.016 * alpha * this.unit,
         0.95,
       );
     }

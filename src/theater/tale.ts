@@ -40,7 +40,8 @@ export interface Beat {
   skipOnAssist?: boolean;
 }
 
-const near = (a: Creature | undefined, x: number, d: number) => !!a && Math.abs(a.x - x) < d && a.state !== 'carried';
+const near = (a: Creature | undefined, x: number, d: number, u: number) =>
+  !!a && Math.abs(a.x - x) < d * u && a.state !== 'carried';
 
 export const LION_AND_HARE: { id: string; title: string; byline: string; beats: Beat[] } = {
   id: 'lion-and-hare',
@@ -102,7 +103,7 @@ export const LION_AND_HARE: { id: string; title: string; byline: string; beats: 
       until: (c) => {
         const lion = c.find('lion');
         const hare = c.find('hare');
-        return !!lion && !!hare && near(hare, lion.x, 0.42);
+        return !!lion && !!hare && near(hare, lion.x, 0.42, c.ground.unit);
       },
       hold: 2,
       assistAfter: 26,
@@ -110,7 +111,7 @@ export const LION_AND_HARE: { id: string; title: string; byline: string; beats: 
       assist: (c) => {
         const lion = c.find('lion');
         const hare = c.find('hare');
-        if (lion && hare) hare.goTo(lion.x + (hare.x > lion.x ? 0.3 : -0.3), c.ground);
+        if (lion && hare) hare.goTo(lion.x + (hare.x > lion.x ? 0.3 : -0.3) * c.ground.unit, c.ground);
       },
     },
     {
@@ -129,11 +130,11 @@ export const LION_AND_HARE: { id: string; title: string; byline: string; beats: 
       narration: '“Show me this other lion,” growled Bhasuraka.\nThe hare led him to an old well.',
       instruction: 'Pinch the lion and carry him to the well',
       enter: (c) => c.setWell(true),
-      until: (c) => near(c.find('lion'), c.wellX, 0.32),
+      until: (c) => near(c.find('lion'), c.wellX, 0.32, c.ground.unit),
       hold: 3,
       assistAfter: 26,
       assistText: 'Or wait, and he will stalk there himself',
-      assist: (c) => c.find('lion')?.goTo(c.wellX - 0.28, c.ground),
+      assist: (c) => c.find('lion')?.goTo(c.wellX - 0.28 * c.ground.unit, c.ground),
     },
     {
       narration: 'The lion looked down into the water,\nand another lion looked back at him.',
@@ -160,7 +161,7 @@ export const LION_AND_HARE: { id: string; title: string; byline: string; beats: 
       narration: 'Furious, Bhasuraka leapt at his rival…',
       enter: (c) => {
         const lion = c.find('lion');
-        if (lion) lion.leap(c.wellX, 0.32);
+        if (lion) lion.leap(c.wellX, 0.32 * c.ground.unit);
         c.showReflection(false);
       },
       hold: 3.2,

@@ -4,7 +4,6 @@
  * the first caption is drawn.
  */
 import {
-  AdditiveBlending,
   CanvasTexture,
   DoubleSide,
   LinearFilter,
@@ -44,11 +43,12 @@ export function loadFonts(): Promise<void> {
   return fontsReady;
 }
 
-export type TextStyle = 'narration' | 'instruction' | 'title' | 'subtitle';
+export type TextStyle = 'narration' | 'instruction' | 'title' | 'subtitle' | 'label';
 
-const STYLES: Record<TextStyle, { font: string; color: string; size: number; spacing?: number; upper?: boolean }> = {
+const STYLES: Record<TextStyle, { font: string; color: string; size: number; spacing?: number; upper?: boolean; halo?: boolean }> = {
+  label: { font: '700 {s}px Manrope, Helvetica, sans-serif', color: '#1A120B', size: 64, spacing: 5, upper: true, halo: false },
   narration: { font: 'italic 400 {s}px Fraunces, Georgia, serif', color: '#F6E4C6', size: 112 },
-  instruction: { font: '700 {s}px Manrope, Helvetica, sans-serif', color: '#F2B866', size: 76, spacing: 5, upper: true },
+  instruction: { font: '700 {s}px Manrope, Helvetica, sans-serif', color: '#F2B866', size: 96, spacing: 6, upper: true },
   title: { font: '600 {s}px Fraunces, Georgia, serif', color: '#FBEBD0', size: 230 },
   subtitle: { font: 'italic 400 {s}px Fraunces, Georgia, serif', color: '#E9C99A', size: 92 },
 };
@@ -154,7 +154,7 @@ export class TextPlane {
     const top = this.pxHeight / 2 - ((lines.length - 1) * lineH) / 2;
     // A faint dark halo keeps light text legible on bright real walls.
     ctx.shadowColor = 'rgba(10, 6, 3, 0.85)';
-    ctx.shadowBlur = size * 0.35;
+    ctx.shadowBlur = st.halo === false ? 0 : size * 0.35;
     ctx.fillStyle = st.color;
     lines.forEach((l, i) => ctx.fillText(label(l), this.pxWidth / 2, top + i * lineH));
     ctx.shadowBlur = 0;
@@ -178,13 +178,22 @@ const ringFragment = /* glsl */ `
     vec2 c = vUv - 0.5;
     float r = length(c) * 2.0;
     float a = atan(c.x, c.y) / 6.28318 + 0.5;
-    float disc = smoothstep(0.62, 0.0, r) * (0.55 + 0.25 * uHover + 0.06 * sin(uTime * 2.0));
-    float ring = smoothstep(0.035, 0.0, abs(r - 0.8));
-    float fill = ring * step(1.0 - uProgress, a);
-    float base = ring * 0.28;
-    vec3 col = vec3(1.0, 0.78, 0.46) * disc + vec3(1.0, 0.62, 0.22) * (fill * 1.4 + base);
-    float alpha = clamp(disc * 0.7 + fill + base, 0.0, 1.0) * uOpacity;
-    gl_FragColor = vec4(col * alpha, alpha);
+    float aa = fwidth(r) * 1.5;
+    // An ink medallion with a lantern-gold ring that fills while covered.
+    float disc = 1.0 - smoothstep(0.6 - aa, 0.6 + aa, r);
+    float glyph = 1.0 - smoothstep(0.16 - aa, 0.16 + aa, r);
+    float breathe = 0.5 + 0.5 * sin(uTime * 2.2);
+    float ringBand = 1.0 - smoothstep(0.05 - aa, 0.05 + aa, abs(r - 0.8));
+    float fill = ringBand * step(1.0 - uProgress, a);
+    vec3 ink = vec3(0.045, 0.032, 0.024);
+    vec3 gold = vec3(1.0, 0.72, 0.36);
+    vec3 col = ink;
+    float alpha = disc * 0.9;
+    col = mix(col, gold * (0.8 + 0.2 * breathe), glyph * (0.6 + 0.4 * uHover));
+    col = mix(col, gold * 1.15, fill);
+    col = mix(col, gold * 0.7, ringBand * (1.0 - fill) * (0.35 + 0.4 * uHover));
+    alpha = max(alpha, ringBand * mix(0.35 + 0.4 * uHover, 1.0, fill));
+    gl_FragColor = vec4(col, alpha * uOpacity);
   }
 `;
 
@@ -212,14 +221,13 @@ export class LightButton {
       transparent: true,
       depthTest: false,
       depthWrite: false,
-      blending: AdditiveBlending,
       uniforms: { uProgress: { value: 0 }, uHover: { value: 0 }, uOpacity: { value: 0 }, uTime: { value: 0 } },
     });
     this.group = new Mesh(new PlaneGeometry(1, 1), this.ringMaterial);
     this.group.renderOrder = 25;
     this.group.frustumCulled = false;
     this.group.visible = false;
-    this.label = new TextPlane('instruction', 0.5, 1024, 112);
+    this.label = new TextPlane('label', 0.5, 1024, 112);
     this.label.show(text);
   }
 
