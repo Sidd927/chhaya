@@ -1,15 +1,68 @@
 <!doctype html>
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1, shrink-to-fit=no"
-    />
-    <link rel="icon" href="data:," />
-    <title>chhaya</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <meta name="description" content="Chhaya is a mixed-reality shadow theater for Meta Quest. A lantern throws your hands' shadows onto your real wall, and the shapes you hold still come alive." />
+    <meta name="theme-color" content="#0d0a08" />
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <title>Chhaya — a shadow theater for your hands</title>
   </head>
-  <body style="margin: 0">
+  <body>
+    <main id="landing" class="landing" aria-live="polite">
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">A mixed-reality shadow theater for Meta Quest</p>
+          <h1 class="wordmark">Chhaya</h1>
+          <p class="lede">
+            A lantern throws your hands’ shadows onto your own wall.
+            Hold a shape still, and it comes alive.
+          </p>
+          <div class="actions">
+            <button id="enter" class="enter" type="button" disabled>
+              <span class="enter-flame" aria-hidden="true"></span>
+              <span id="enter-label">Checking your headset…</span>
+            </button>
+            <p id="status" class="status"></p>
+          </div>
+          <ul class="facts" aria-label="What to expect">
+            <li>Hands only</li>
+            <li>Seated</li>
+            <li>About 8 minutes</li>
+            <li>Sound on</li>
+          </ul>
+        </div>
+        <figure class="wall" aria-hidden="true">
+          <div class="pool"></div>
+          <svg class="hare" viewBox="0 0 220 260" role="presentation">
+            <path d="M92 250c-6-38 2-74 16-98 7-12 4-24-3-37-11-20-20-50-15-80 3-16 14-17 19-3 7 19 9 46 14 66 3-26 9-62 20-84 7-13 18-10 17 6-2 28-13 62-15 92 13 7 26 22 31 40 4 15-3 24-15 24-9 0-15 6-15 16v58z" />
+            <circle class="eye" cx="138" cy="160" r="4.5" />
+          </svg>
+          <figcaption class="wall-caption">Two fingers up. Hold still.</figcaption>
+        </figure>
+      </section>
+
+      <section class="how" aria-labelledby="how-title">
+        <h2 id="how-title" class="section-title">How the theater works</h2>
+        <ol class="steps">
+          <li><span class="num">1</span><strong>Choose a wall.</strong> Look at it and pinch. No wall nearby? A paper screen appears instead.</li>
+          <li><span class="num">2</span><strong>Raise a hand into the light.</strong> Your shadow falls on the wall, larger and softer the nearer you are to the lantern.</li>
+          <li><span class="num">3</span><strong>Hold a shape still.</strong> It wakes up and walks away as a creature. Pinch its shadow to carry it.</li>
+        </ol>
+      </section>
+
+      <section class="shapes" aria-labelledby="shapes-title">
+        <h2 id="shapes-title" class="section-title">Shadows to find</h2>
+        <ul class="shape-list" id="shape-list"></ul>
+      </section>
+
+      <footer class="foot">
+        <p>
+          Includes a retelling of <em>The Lion and the Clever Hare</em> from the Panchatantra.
+          Works without controllers. Your progress stays on this headset.
+        </p>
+      </footer>
+    </main>
     <div id="scene-container"></div>
     <script type="module" src="/src/index.ts"></script>
   </body>
