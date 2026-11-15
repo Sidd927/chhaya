@@ -317,6 +317,31 @@
     return { ...st() };
   }
 
+  if (segment === 'wants') {
+    // Wrong shapes on purpose: the beats that want a lion or a hare must
+    // still get one from whatever the hand holds.
+    const y = H() * 0.55;
+    await palm(W() * 0.3, y, 'fist');
+    await waitFor(() => creature('lion'), 8000);
+    const gotLion = !!creature('lion');
+    await sleep(800);
+    await rest();
+    await waitFor(() => beat(3), 30000);
+    await sleep(800);
+    await palm(W() * 0.62, y, 'rock');
+    await waitFor(() => creature('stag'), 8000);
+    await sleep(800);
+    await rest();
+    await waitFor(() => beat(5), 30000);
+    await sleep(1500);
+    await palm(W() * 0.86, y, 'flat');
+    await waitFor(() => creature('hare'), 8000);
+    const gotHare = !!creature('hare');
+    await sleep(800);
+    await rest();
+    return { ...st(), gotLion, gotHare, species: sys().debugCreatures().map((c) => c.s) };
+  }
+
   if (segment === 'check') {
     dev.primaryInputMode = 'hand';
     sys().world.launchXR();

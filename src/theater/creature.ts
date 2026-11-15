@@ -456,14 +456,15 @@ export class Creature {
     const glow = this.state === 'awakening' ? 1 - awaken : this.glowing ? 0.7 + 0.3 * Math.sin(this.phase * 3) : ember;
     const depth = this.depth + (0.92 - this.depth) * awaken; // creatures settle crisp, near the wall
 
-    HAND_BONES.forEach(([a, b, , arm], k) => {
+    for (let k = 0; k < HAND_BONES.length; k++) {
+      const [a, b, , arm] = HAND_BONES[k];
       let r = this.boneRadii[k] * s;
       if (arm) {
-        if (armFade <= 0.02) return;
+        if (armFade <= 0.02) continue;
         r *= armFade;
       }
       layer.push(this.sx(a, s), this.sy(a, hop, s), this.sx(b, s), this.sy(b, hop, s), r, depth, glow);
-    });
+    }
 
     if (this.blinkIn > 0 && awaken >= 1) {
       const ex = this.x + this.facing * this.eyeLocal[0] * s;

@@ -31,12 +31,14 @@ import { LightButton, loadFonts, TextPlane } from './text.js';
 type Phase = 'waiting' | 'dim' | 'wall' | 'curtain' | 'first-light' | 'first-shape' | 'menu' | 'tale' | 'tale-end' | 'open';
 
 const MAX_CREATURES = 7;
+const UP = new Vector3(0, 1, 0);
 const AWAKEN_SECONDS = 1.1;
 const WISP_SECONDS = 2.6;
 
 interface HandShadow {
   pts: Float32Array;
   radii: Float32Array;
+  scales: Float32Array;
   valid: boolean;
   depth: number;
   cx: number;
@@ -52,6 +54,7 @@ interface HandShadow {
 const newShadow = (): HandShadow => ({
   pts: new Float32Array(POINT_COUNT * 2),
   radii: new Float32Array(HAND_BONES.length),
+  scales: new Float32Array(POINT_COUNT),
   valid: false,
   depth: 0.5,
   cx: 0,
@@ -130,6 +133,14 @@ export class TheaterSystem extends createSystem({}) {
   private readonly headUp = new Vector3();
   private readonly proj: Projected = { x: 0, y: 0, scale: 1, depth: 0.5, valid: false };
   private readonly playerMatrix = new Matrix4();
+  // Scratch objects for wall picking (no allocation per plane per frame).
+  private readonly wallM = new Matrix4();
+  private readonly wallN = new Vector3();
+  private readonly wallO = new Vector3();
+  private readonly wallR = new Vector3();
+  private readonly wallW = new Vector3();
+  private readonly wallC = new Vector3();
+  private readonly bestWall = { center: new Vector3(), normal: new Vector3(), halfW: 0, halfH: 0, hitValid: true };
 
   init(): void {
     this.layer = new ShadowLayer(1024);
@@ -364,7 +375,22 @@ export class TheaterSystem extends createSystem({}) {
 
   // ─────────────────────────────── frame ───────────────────────────────
 
+  private readonly reportedErrors = new Set<string>();
+
   update(delta: number): void {
+    try {
+      this.frame(delta);
+    } catch (err) {
+      // Never let one bad frame stop the show on a device we could not test.
+      const msg = err instanceof Error ? `${err.message}\n${err.stack ?? ''}` : String(err);
+      if (!this.reportedErrors.has(msg) && this.reportedErrors.size < 20) {
+        this.reportedErrors.add(msg);
+        console.error('[chhaya] frame error', err);
+      }
+    }
+  }
+
+  private frame(delta: number): void {
     const dt = Math.min(0.05, delta);
     this.clock += dt;
     if (this.phase === 'waiting') return;
@@ -604,17 +630,17 @@ export class TheaterSystem extends createSystem({}) {
         if (label && label !== 'wall' && label !== 'wall_face' && label !== 'other') continue;
         const pose = frame.getPose(plane.planeSpace, ref);
         if (!pose) continue;
-        const m = new Matrix4().fromArray(pose.transform.matrix as unknown as number[]).premultiply(this.playerMatrix);
-        const normal = new Vector3(0, 1, 0).transformDirection(m).setY(0);
+        const m = this.wallM.fromArray(pose.transform.matrix as unknown as number[]).premultiply(this.playerMatrix);
+        const normal = this.wallN.set(0, 1, 0).transformDirection(m).setY(0);
         if (normal.lengthSq() < 0.5) continue;
         normal.normalize();
-        const origin = new Vector3().setFromMatrixPosition(m);
+        const origin = this.wallO.setFromMatrixPosition(m);
         if (normal.dot(this.tmpV.subVectors(this.headPos, origin)) < 0) normal.negate();
         // Polygon extents in wall axes.
-        const right = new Vector3().crossVectors(new Vector3(0, 1, 0), normal).normalize();
+        const right = this.wallR.crossVectors(UP, normal).normalize();
         let minR = Infinity, maxR = -Infinity, minU = Infinity, maxU = -Infinity;
         for (const p of plane.polygon) {
-          const w = new Vector3(p.x, p.y, p.z).applyMatrix4(m).sub(origin);
+          const w = this.wallW.set(p.x, p.y, p.z).applyMatrix4(m).sub(origin);
           const r = w.dot(right);
           minR = Math.min(minR, r);
           maxR = Math.max(maxR, r);
@@ -622,21 +648,26 @@ export class TheaterSystem extends createSystem({}) {
           maxU = Math.max(maxU, w.y);
         }
         if (!(maxR - minR > (label === 'wall' ? 0.8 : 1.2)) || !(maxU - minU > 0.8)) continue;
-        const center = origin.clone().addScaledVector(right, (minR + maxR) / 2);
+        const center = this.wallC.copy(origin).addScaledVector(right, (minR + maxR) / 2);
         center.y += (minU + maxU) / 2;
         const denom = this.headFwd.dot(normal);
         if (denom > -0.15) continue;
         const t = this.tmpV.subVectors(center, this.headPos).dot(normal) / denom;
         if (t < 0.6 || t > 6) continue;
         const hit = this.tmpV2.copy(this.headPos).addScaledVector(this.headFwd, t);
-        const local = hit.clone().sub(center);
+        const local = this.wallW.subVectors(hit, center);
         const hr = local.dot(right);
         const halfW = (maxR - minR) / 2;
         const halfH = (maxU - minU) / 2;
         const inside = Math.abs(hr) < halfW + 0.2 && Math.abs(local.y) < halfH + 0.3;
         if (inside && t < bestT) {
           bestT = t;
-          best = { center, normal, halfW, halfH, hitValid: true };
+          // Only the winning wall is copied out of the scratch vectors.
+          best = this.bestWall;
+          best.center.copy(center);
+          best.normal.copy(normal);
+          best.halfW = halfW;
+          best.halfH = halfH;
           this.gazeHit.copy(hit);
         }
       }
@@ -864,7 +895,7 @@ export class TheaterSystem extends createSystem({}) {
       let depthSum = 0;
       let n = 0;
       let ok = true;
-      const scales = new Float32Array(POINT_COUNT);
+      const scales = sh.scales;
       for (let i = 0; i < POINT_COUNT; i++) {
         h.point(i, this.tmpV);
         this.stage.project(light, this.tmpV, this.proj);
@@ -888,10 +919,11 @@ export class TheaterSystem extends createSystem({}) {
         }
       }
       if (!ok) continue;
-      HAND_BONES.forEach(([a, b, r], k) => {
+      for (let k = 0; k < HAND_BONES.length; k++) {
+        const [a, b, r] = HAND_BONES[k];
         const base = r > 0 ? r : Math.max(h.radii[a], h.radii[b]) * 1.08;
         sh.radii[k] = base * (scales[a] + scales[b]) * 0.5;
-      });
+      }
       sh.depth = depthSum / Math.max(1, n);
       sh.cx = sh.pts[25 * 2];
       sh.cy = sh.pts[25 * 2 + 1];
@@ -940,19 +972,31 @@ export class TheaterSystem extends createSystem({}) {
       const species = h.steadySpecies;
       const reading = h.reading;
       const wispLike = !species && reading !== null && reading.openness < 0.72 && reading.pinchGap > 0.03;
-      if (onStage && h.stillFor > 0.25 && (species || wispLike)) {
-        sh.awaken += dt / (species ? AWAKEN_SECONDS : WISP_SECONDS);
+      // A story beat waiting for a creature takes whatever shape is offered.
+      const wanted = this.wantedSpecies();
+      const anyShape = !!wanted && reading !== null && reading.pinchGap > 0.03;
+      if (onStage && h.stillFor > 0.25 && (species || wispLike || anyShape)) {
+        sh.awaken += dt / (species || anyShape ? AWAKEN_SECONDS : WISP_SECONDS);
       } else {
         sh.awaken = Math.max(0, sh.awaken - dt * 2.5);
       }
       if (sh.awaken >= 1) {
         sh.awaken = 0;
         sh.locked = true;
-        this.spawnFromShadow(sh, species ?? 'wisp');
+        this.spawnFromShadow(sh, wanted ?? species ?? 'wisp');
       }
       strongest = Math.max(strongest, sh.awaken);
     }
     this.sound.awakening(strongest > 0.05 ? strongest : -1);
+  }
+
+  /** The creature the current story beat is waiting for, if it is still missing. */
+  private wantedSpecies(): Species | undefined {
+    if (this.phase !== 'tale') return undefined;
+    const want = this.currentBeat()?.wants;
+    if (!want) return undefined;
+    for (const c of this.creatures) if (c.species === want && c.state !== 'leaving' && c.state !== 'gone') return undefined;
+    return want;
   }
 
   private ground(): Ground {
@@ -1051,7 +1095,11 @@ export class TheaterSystem extends createSystem({}) {
       c.calm = calm;
       c.update(dt, ground);
     }
-    this.creatures = this.creatures.filter((c) => c.alive);
+    let alive = 0;
+    for (let i = 0; i < this.creatures.length; i++) {
+      if (this.creatures[i].alive) this.creatures[alive++] = this.creatures[i];
+    }
+    this.creatures.length = alive;
     this.reflectionAlpha += ((this.reflection ? 1 : 0) - this.reflectionAlpha) * Math.min(1, dt * 2);
   }
 
@@ -1073,9 +1121,11 @@ export class TheaterSystem extends createSystem({}) {
       const sh = this.shadows[h.side];
       if (!h.tracked || !sh.valid) continue;
       const ember = sh.awaken;
-      HAND_BONES.forEach(([a, b], k) => {
+      for (let k = 0; k < HAND_BONES.length; k++) {
+        const a = HAND_BONES[k][0];
+        const b = HAND_BONES[k][1];
         layer.push(sh.pts[a * 2], sh.pts[a * 2 + 1], sh.pts[b * 2], sh.pts[b * 2 + 1], sh.radii[k], sh.depth, ember);
-      });
+      }
     }
     layer.render(this.world.renderer);
   }
@@ -1116,7 +1166,10 @@ export class TheaterSystem extends createSystem({}) {
 
   // ─────────────────────────────── the tale ───────────────────────────────
 
+  private taleCtx: TaleContext | null = null;
+
   private taleContext(): TaleContext {
+    if (this.taleCtx) return this.taleCtx;
     const self = this;
     return {
       get time() {
@@ -1151,7 +1204,7 @@ export class TheaterSystem extends createSystem({}) {
         const hare = this.creatures.find((c) => c.species === 'hare');
         hare?.goTo(this.stage.width * 0.5, this.ground());
       },
-      clearStage: (except) => this.clearStage(except),
+      clearStage: (except: Species[] | undefined) => this.clearStage(except),
       setMoon: (on) => (this.scenery.moonTarget = on || !!this.scenery.moonHare ? 1 : 0),
       setFire: (on, x) => {
         this.scenery.fireTarget = on ? 1 : 0;

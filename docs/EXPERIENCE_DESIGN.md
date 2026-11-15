@@ -48,6 +48,8 @@ Shapes are read from finger curl (total bend from metacarpal to tip) and spread.
 
 A relaxed hand deliberately classifies as nothing.
 
+In a story beat that waits for a particular creature (the lion, the hare), any shape held still in the light becomes that creature. The tale can't stall on how a real hand reads, and the creature still keeps that hand's silhouette.
+
 ## Seated and field-of-view aware
 
 - Everything happens within arm's reach and on one wall in front of the user. Nothing requires standing or turning.

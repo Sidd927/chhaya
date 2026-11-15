@@ -19,7 +19,7 @@ A self-assessment written as a demanding judge would score it, on 15 November 20
    - a button press
    - a carried creature
    - frame rate (Quest Browser's performance HUD or OVR Metrics Tool)
-2. **Real hands vs emulator poses.** Curl thresholds may be too strict or too loose on real hands. The design mitigates it (wisps, assists), but recognition quality drives the delight.
+2. **Real hands vs emulator poses.** Curl thresholds may be too strict or too loose on real hands. The stories no longer depend on it: a beat waiting for a lion or a hare accepts any held shape. Collecting all eight species in the open stage still does.
 3. **Video.** It must be edited under 3 minutes with narration and captions, and must lead with the strongest moment: the shadow coming alive.
 4. **Return loop depth.** Two tales and a moon keepsake. A schedule (one new tale per evening) would make the loop stronger.
 

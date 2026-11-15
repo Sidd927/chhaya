@@ -61,6 +61,12 @@ Cost per frame: one draw of up to ~400 instanced quads into a small target, plus
 - On pinch, centres the stage where the lantern throws a natural hand pose, clamped to the wall's extents.
 - The stage is then anchored with `XRFrame.createAnchor` and `XRAnchor.requestPersistentHandle()`, both feature-detected. On the next visit, `XRSession.restorePersistentAnchor(uuid)` puts it back.
 
+## Robustness
+
+- `TheaterSystem.update` wraps each frame in a guard that logs each distinct error once and keeps running.
+- Hot paths allocate nothing per frame.
+- Story beats declare the creature they want; while it is missing, any held shape becomes it.
+
 ## Gotchas found and handled
 
 - IWSDK replaces an object's `position` vector when it becomes an entity, so references are never cached; `Lantern.position` is a getter.

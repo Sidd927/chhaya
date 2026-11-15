@@ -44,6 +44,11 @@ Each row was performed with emulated hands (named poses, transforms, pinch value
 | Pause (`visible-blurred`) | Code path only | Not exercised |
 | Audio | Code compiles and runs. Headless capture has no audio output. | **Not listened to.** Levels unverified. |
 
+## Robustness for untested hardware
+
+- **Stories don't depend on recognition.** Beats that wait for a lion or a hare turn *any* shape held still in the light into that creature. Verified by deliberately making a fist for the lion and a flat hand for the hare: both tales still complete (segment `wants`).
+- **Guarded frame loop.** An exception in a frame is caught and logged once (`[chhaya] frame error`), so the theater keeps running. No frame errors were logged across the full verification runs.
+
 ## Bugs found and fixed during testing
 
 - Lantern at the floor origin: IWSDK replaces an entity's `position` vector, so the cached reference was stale.
@@ -55,8 +60,19 @@ Each row was performed with emulated hands (named poses, transforms, pinch value
 
 ## Performance
 
-- Not measured on Quest. The frame budget on Quest 3 at 72–90 Hz is 11–14 ms; the design keeps per-frame work small (see `ARCHITECTURE.md`).
-- Emulator frame rate on the development Mac is not representative of Quest and is not reported as a Quest figure.
+- **Not measured on Quest.** The budget on Quest 3 at 72–90 Hz is 11–14 ms per frame.
+- Desktop emulator profile, 6.3 s during the tale, from `browser profile`, rendering mode, on an M5 MacBook Air:
+  - frame time p50 16.7 ms and p95 16.8 ms (vsync-locked at 60 Hz)
+  - 0 dropped frames
+  - script time about 2.6 ms per frame
+
+  The script time **includes IWER's own emulation and room rendering**, so it is only an upper-bound sanity check, not a Quest figure.
+- Per-frame allocations were removed from the hot paths:
+  - hand projection buffers are preallocated
+  - the tale context is cached
+  - creature lists are compacted in place
+  - wall picking uses scratch vectors
+  - the shadow and creature loops use no closures
 
 ## Needs physical hardware
 

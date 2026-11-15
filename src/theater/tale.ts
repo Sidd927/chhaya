@@ -49,6 +49,11 @@ export interface Beat {
   assistAfter?: number;
   assistText?: string;
   assist?: (c: TaleContext) => void;
+  /**
+   * The creature this beat is waiting for. While it is missing, any shape held
+   * still in the light becomes it, so the story never depends on recognition.
+   */
+  wants?: Species;
   /** The assist simply moves the story on (used for the roar). */
   skipOnAssist?: boolean;
 }
@@ -71,6 +76,7 @@ export const LION_AND_HARE: Tale = {
     {
       narration: 'Long ago, in a deep forest,\nthere lived a lion named Bhasuraka.',
       instruction: 'Bend your fingers into a claw and hold it in the light',
+      wants: 'lion',
       until: (c) => !!c.find('lion') && c.find('lion')!.state !== 'awakening',
       hold: 4,
       assistAfter: 22,
@@ -101,6 +107,7 @@ export const LION_AND_HARE: Tale = {
     {
       narration: 'One morning, it was the turn\nof a small and clever hare.',
       instruction: 'Raise two fingers for ears, fold the others, and hold still',
+      wants: 'hare',
       enter: (c) => {
         for (const o of c.others('lion', 'hare')) o.leave(o.x < c.width / 2 ? -1 : 1);
       },
@@ -216,6 +223,7 @@ export const HARE_IN_THE_MOON: Tale = {
     {
       narration: 'On the bank of a wide river lived four friends:\na hare, a stag, a peacock and a tortoise.',
       instruction: 'Raise two fingers for the hare, and hold still',
+      wants: 'hare',
       until: (c) => !!c.find('hare') && c.find('hare')!.state !== 'awakening',
       hold: 4,
       assistAfter: 22,
