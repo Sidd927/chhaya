@@ -13,6 +13,7 @@
   const V3 = sys().headPos.constructor;
   const Q = sys().lantern.group.quaternion.constructor;
   const M4 = sys().playerMatrix.constructor;
+  const V3c = sys().headPos.constructor;
   const E = sys().lantern.group.rotation.constructor;
   const ease = (t) => t * t * t * (10 - 15 * t + 6 * t * t); // minimum-jerk
 
@@ -90,6 +91,13 @@
       await sleep(16);
     }
   };
+  const lookStage = async (seconds = 1.2, pitchBias = -3) => {
+    const c = sys().stage.center;
+    const h = sys().headPos;
+    const yaw = Math.atan2(-(c.x - h.x), -(c.z - h.z)) * 180 / Math.PI;
+    const pitch = Math.atan2(c.y - h.y, Math.hypot(c.x - h.x, c.z - h.z)) * 180 / Math.PI + pitchBias;
+    await head(yaw, pitch, seconds);
+  };
   const REST_R = [0.24, 1.02, -0.3];
   const REST_L = [-0.24, 1.02, -0.3];
   const rest = async () => {
@@ -104,11 +112,11 @@
   const W = () => sys().stage.width;
   const H = () => sys().stage.height;
   const creature = (s) => sys().debugCreatures().find((c) => c.s === s);
-  const carry = async (species, toX) => {
+  const carry = async (species, toX, grabDx = 0) => {
     const c = creature(species);
     if (!c) return;
     await pose(R, 'default', 0.2);
-    await move(R, 'right', 'grasp', aim(c.x, c.y, 0.32), PINCH_SIDE, 1.0);
+    await move(R, 'right', 'grasp', aim(c.x + grabDx, c.y, 0.32), PINCH_SIDE, 1.0);
     await pinch(R, 1, 0.25);
     await sleep(250);
     await move(R, 'right', 'grasp', aim((c.x + toX) / 2, c.y + 0.35, 0.32), PINCH_SIDE, 0.9);
@@ -119,7 +127,7 @@
   };
   const beat = (n) => st().phase === 'tale' && st().beat >= n;
 
-  dev.fovy = 1.36;
+  dev.fovy = window.__filmFov || 1.36;
   if (segment === 'opening') {
     chh.resetSave();
     const w = sys().world;
@@ -141,6 +149,7 @@
     await pinch(R, 0, 0.15);
     await rest();
     await waitFor(() => st().phase === 'first-light', 15000);
+    if (window.__filmFov) await lookStage(1.0);
     await sleep(600);
     const x = W() * 0.42, y = H() * 0.55;
     // Keep the open hand gently moving (a held-still hand would wake a peacock).
@@ -192,7 +201,11 @@
     if (lion) await carry('hare', lion.x + 0.45);
     await waitFor(() => beat(9), 40000);
     await sleep(2000);
-    await carry('lion', sys().scenery.wellX - 0.32);
+    // Grab the lion by its far side, away from the hare standing beside it.
+    const hare = creature('hare');
+    const lionNow = creature('lion');
+    const away = hare && lionNow ? (hare.x > lionNow.x ? -0.14 : 0.14) * (H() / 1.3) : 0;
+    await carry('lion', sys().scenery.wellX - 0.32, away);
     await waitFor(() => beat(10), 30000);
     await sleep(2200);
     await palm(W() * 0.45, H() * 0.55, 'fist', 1.0);
@@ -252,6 +265,7 @@
       await rest();
     }
     await waitFor(() => st().phase === 'menu', 15000);
+    if (window.__filmFov) await lookStage(1.0);
     await sleep(3000);
     const b = sys().debugButtons().find((b) => b.id === 'tale');
     await palm(b.x, b.y, 'flat', 1.1);
@@ -340,6 +354,85 @@
     await sleep(800);
     await rest();
     return { ...st(), gotLion, gotHare, species: sys().debugCreatures().map((c) => c.s) };
+  }
+
+  if (segment === 'return') {
+    // A later visit: the stage comes back on its wall, with the hare in the moon.
+    const w = sys().world;
+    if (w.session) await w.session.end();
+    await sleep(1500);
+    dev.primaryInputMode = 'hand';
+    w.launchXR();
+    await waitFor(() => st().phase === 'dim', 10000);
+    place(R, 'right', 'wrist', REST_R, null);
+    place(L, 'left', 'wrist', REST_L, null);
+    await waitFor(() => st().phase === 'curtain', 15000);
+    if (window.__filmFov) await lookStage(0.8);
+    await waitFor(() => st().phase === 'menu', 15000);
+    await sleep(7000);
+    return { ...st(), moon: !!sys().scenery.moonHare };
+  }
+
+  // Optical field-of-view change with the head turning, as one eased move.
+  const lens = async (fromFov, toFov, fromLook, toLook, seconds) => {
+    const t0 = performance.now();
+    const q0 = new Q(), q1 = new Q();
+    const aimQ = (p) => {
+      const h = sys().headPos;
+      const yaw = Math.atan2(-(p.x - h.x), -(p.z - h.z));
+      const pitch = Math.atan2(p.y - h.y, Math.hypot(p.x - h.x, p.z - h.z));
+      return new Q().setFromEuler(new E(pitch, yaw, 0, 'YXZ'));
+    };
+    q0.copy(aimQ(fromLook)); q1.copy(aimQ(toLook));
+    for (;;) {
+      const t = Math.min(1, (performance.now() - t0) / (seconds * 1000));
+      const k = ease(t);
+      dev.fovy = fromFov + (toFov - fromFov) * k;
+      const q = q0.clone().slerp(q1, k);
+      dev.quaternion.set(q.x, q.y, q.z, q.w);
+      if (t >= 1) break;
+      await sleep(16);
+    }
+  };
+
+  if (segment === 'moonmacro') {
+    // From the menu of a return visit: the moon, close, then the whole stage.
+    await waitFor(() => st().phase === 'menu', 15000);
+    const sc = sys().scenery;
+    const moon = sys().stage.toWorld(sc.moonX, sc.moonY, 0, new V3());
+    const centre = sys().stage.center.clone();
+    centre.y -= 0.25;
+    await lens(0.2, 0.2, moon, moon, 0.05);
+    await sleep(6500);
+    await lens(0.2, 0.95, moon, centre, 4.2);
+    await sleep(3000);
+    return { ...st() };
+  }
+
+  if (segment === 'awakemacro') {
+    // Open stage, a tighter lens on one shape waking up.
+    const b = sys().debugButtons().find((b) => b.id === 'open');
+    if (b) {
+      await palm(b.x, b.y, 'flat', 1.1);
+      await waitFor(() => st().phase === 'open', 6000);
+      await sleep(300);
+      await rest();
+    }
+    await sleep(1200);
+    const c = sys().stage.center.clone();
+    c.y -= 0.15;
+    const here = sys().stage.center.clone();
+    await lens(dev.fovy, 0.62, here, c, 1.0);
+    const y = H() * 0.5;
+    for (const [fx, id] of [[0.5, 'peace'], [0.38, 'claw'], [0.62, 'open']]) {
+      await palm(W() * fx, y, id, 1.0);
+      const n = st().creatures;
+      await waitFor(() => st().creatures > n, 6000);
+      await sleep(1600);
+      await rest();
+      await sleep(900);
+    }
+    return { ...st() };
   }
 
   if (segment === 'check') {

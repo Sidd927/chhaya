@@ -33,6 +33,7 @@ export default async function run({ page, frame, workspaceRoot }) {
   });
   await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 85, maxWidth: 1920, maxHeight: 1080, everyNthFrame: 2 });
   const src = readFileSync(`${workspaceRoot}/scripts/dev/choreo.js`, 'utf8');
+  await fr.evaluate((f) => { window.__filmFov = f; }, Number(process.env.FOV || 0) || null);
   const keepClean = setInterval(() => void clean().catch(() => undefined), 1500);
   let result;
   try {
