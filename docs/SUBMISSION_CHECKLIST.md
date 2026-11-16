@@ -29,7 +29,8 @@ Deadline: **18 November 2026, 12:00 PT = 19 November 2026, 01:30 IST.** Submit w
 - [ ] Title, tagline, description: copy from `DEVPOST_SUBMISSION.md`. Confirm the target launch date.
 - [ ] Track: **Entertainment**. Division: **New Experience**.
 - [ ] Project link: `https://sidd927.github.io/chhaya/`
-- [ ] Video under 3:00, **public** on YouTube or Vimeo. Script: `DEMO_VIDEO_SCRIPT.md`; shots: `VIDEO_SHOTLIST.md`; emulator rough cut: `media/chhaya-emulator-take.mp4` (local file, not committed).
+- [x] Video produced: `media/production/exports/Chhaya_Meta_VR_Competition_Demo_FINAL.mp4` (2:45, 1080p30, with `.srt` subtitles and thumbnail; local, not committed). Report: `media/production/FINAL_VIDEO_REPORT.md`.
+- [ ] Upload the video to YouTube or Vimeo as **Public**, add the subtitles and thumbnail, and paste the link into Devpost.
 - [ ] Screenshots: `docs/media/*.jpg`. Thumbnail: `docs/media/thumbnail.jpg`.
 - [ ] Testing instructions: from `DEVPOST_SUBMISSION.md`.
 - [ ] Press **Submit**, then reopen the project page and confirm it shows as submitted. A draft is not an entry.
